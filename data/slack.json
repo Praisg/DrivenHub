@@ -1,0 +1,38 @@
+[
+  {
+    "id": "slack-1",
+    "channel": "general",
+    "author": "Ava",
+    "body": "Welcome everyone! Drop your weekly wins below 🎉",
+    "dateISO": "2024-01-20T14:10:00Z"
+  },
+  {
+    "id": "slack-2",
+    "channel": "events",
+    "author": "Noah",
+    "body": "Strategy Session this Thu — add your questions in the thread.",
+    "dateISO": "2024-01-22T09:00:00Z"
+  },
+  {
+    "id": "slack-3",
+    "channel": "resources",
+    "author": "Maya",
+    "body": "New Productivity Masterclass is live. Link in Resources.",
+    "dateISO": "2024-01-25T18:45:00Z"
+  },
+  {
+    "id": "slack-4",
+    "channel": "announcements",
+    "author": "LAB Team",
+    "body": "Monthly survey is open. Your feedback shapes our roadmap!",
+    "dateISO": "2024-01-28T10:00:00Z"
+  },
+  {
+    "id": "slack-5",
+    "channel": "wins",
+    "author": "Jamal",
+    "body": "Hit my Q1 milestone two weeks early — thanks for the accountability!",
+    "dateISO": "2024-01-30T16:20:00Z"
+  }
+]
+

@@ -2,25 +2,179 @@
 
 :root {
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #1a1a1a;
+  --primary: #1e293b;
+  --secondary: #64748b;
+  --accent: #6b8e23;
+  --success: #059669;
+  --warning: #d97706;
+  --border: #e5e7eb;
+  --card-bg: #ffffff;
+  --section-bg: #f8fafc;
+  --driven-purple: #4a235a;
+  --driven-green: #6b8e23;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-primary: var(--primary);
+  --color-secondary: var(--secondary);
+  --color-accent: var(--accent);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-border: var(--border);
+  --color-card-bg: var(--card-bg);
+  --color-section-bg: var(--section-bg);
+  --color-driven-purple: var(--driven-purple);
+  --color-driven-green: var(--driven-green);
+  --font-sans: var(--font-inter);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-inter), system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  line-height: 1.6;
+  font-size: 16px;
+}
+
+/* Custom focus styles for accessibility */
+*:focus {
+  outline: 2px solid var(--driven-green);
+  outline-offset: 2px;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Custom button focus styles */
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--driven-green);
+  outline-offset: 2px;
+}
+
+/* DRIVEN-style message bubbles */
+.message-bubble {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.message-bubble:hover {
+  background: var(--section-bg);
+  transition: background-color 0.2s ease;
+}
+
+.channel-header {
+  background: var(--driven-purple);
+  color: white;
+  padding: 16px 20px;
+  border-radius: 12px 12px 0 0;
+  font-weight: 600;
+  font-size: 18px;
+}
+
+/* DRIVEN-style cards */
+.driven-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.driven-card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  transition: box-shadow 0.3s ease;
+}
+
+/* DRIVEN-style buttons */
+.driven-btn-primary {
+  background: var(--driven-green);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 24px;
+  font-weight: 600;
+  font-size: 16px;
+  transition: all 0.2s ease;
+}
+
+.driven-btn-primary:hover {
+  background: #5a7a1f;
+  transform: translateY(-1px);
+}
+
+.driven-btn-secondary {
+  background: var(--card-bg);
+  color: var(--foreground);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 24px;
+  font-weight: 500;
+  font-size: 16px;
+  transition: all 0.2s ease;
+}
+
+.driven-btn-secondary:hover {
+  background: var(--section-bg);
+  border-color: var(--driven-green);
+}
+
+/* DRIVEN-style input fields */
+.driven-input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 16px;
+  background: var(--card-bg);
+  transition: border-color 0.2s ease;
+}
+
+.driven-input:focus {
+  outline: none;
+  border-color: var(--driven-green);
+  box-shadow: 0 0 0 3px rgba(107, 142, 35, 0.1);
+}
+
+/* DRIVEN-style typography */
+.driven-heading {
+  color: var(--driven-purple);
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.driven-text {
+  color: var(--foreground);
+  line-height: 1.6;
+}
+
+.driven-text-muted {
+  color: var(--secondary);
+  line-height: 1.5;
+}
+
+/* DRIVEN-style header */
+.driven-header {
+  background: var(--driven-purple);
+  color: white;
+  padding: 16px 0;
+}
+
+.driven-header h1 {
+  color: white;
+  font-weight: 700;
+  font-size: 2rem;
+}
+
+.driven-header p {
+  color: rgba(255, 255, 255, 0.9);
 }

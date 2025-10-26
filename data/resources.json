@@ -1,0 +1,50 @@
+[
+  {
+    "id": "resource-1",
+    "kind": "video",
+    "title": "Getting Started with LAB",
+    "description": "Complete onboarding walkthrough covering all the basics you need to know.",
+    "url": "https://vimeo.com/123456789",
+    "provider": "Vimeo"
+  },
+  {
+    "id": "resource-2",
+    "kind": "podcast",
+    "title": "LAB Podcast Episode 1: Goal Setting",
+    "description": "Learn our proven framework for setting and achieving meaningful goals.",
+    "url": "https://your-podcast.libsyn.com/goal-setting-episode-1",
+    "provider": "Libsyn"
+  },
+  {
+    "id": "resource-3",
+    "kind": "doc",
+    "title": "Member Handbook",
+    "description": "Everything you need to know about being a LAB member, policies, and resources.",
+    "url": "https://drive.google.com/file/d/1234567890/view",
+    "provider": "Google Drive"
+  },
+  {
+    "id": "resource-4",
+    "kind": "video",
+    "title": "Productivity Masterclass",
+    "description": "Advanced techniques for maximizing your productivity and focus.",
+    "url": "https://vimeo.com/987654321",
+    "provider": "Vimeo"
+  },
+  {
+    "id": "resource-5",
+    "kind": "podcast",
+    "title": "LAB Podcast Episode 2: Time Management",
+    "description": "Deep dive into time management strategies that actually work.",
+    "url": "https://your-podcast.libsyn.com/time-management-episode-2",
+    "provider": "Libsyn"
+  },
+  {
+    "id": "resource-6",
+    "kind": "doc",
+    "title": "Goal Setting Worksheet",
+    "description": "Printable worksheet to help you set and track your goals effectively.",
+    "url": "https://canva.com/design/1234567890/view",
+    "provider": "Canva"
+  }
+]

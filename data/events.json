@@ -1,0 +1,38 @@
+[
+  {
+    "id": "event-1",
+    "title": "LAB Monthly Strategy Session",
+    "startISO": "2024-02-15T18:00:00-06:00",
+    "endISO": "2024-02-15T19:30:00-06:00",
+    "zoomUrl": "https://zoom.us/j/123456789",
+    "eventbriteUrl": "https://www.eventbrite.com/e/lab-strategy-session-tickets-123456789",
+    "description": "Join us for our monthly strategy deep-dive. We'll cover goal setting, productivity systems, and answer your questions."
+  },
+  {
+    "id": "event-2",
+    "title": "Member Q&A Coffee Chat",
+    "startISO": "2024-02-20T10:00:00-06:00",
+    "endISO": "2024-02-20T11:00:00-06:00",
+    "zoomUrl": "https://zoom.us/j/987654321",
+    "eventbriteUrl": "https://www.eventbrite.com/e/member-qa-coffee-chat-tickets-987654321",
+    "description": "Casual coffee chat where you can ask anything. Bring your questions and let's chat!"
+  },
+  {
+    "id": "event-3",
+    "title": "LAB Workshop: Time Management",
+    "startISO": "2024-02-25T14:00:00-06:00",
+    "endISO": "2024-02-25T16:00:00-06:00",
+    "zoomUrl": "https://zoom.us/j/456789123",
+    "eventbriteUrl": "https://www.eventbrite.com/e/time-management-workshop-tickets-456789123",
+    "description": "Learn proven time management techniques that actually work. Includes workbook and follow-up resources."
+  },
+  {
+    "id": "event-4",
+    "title": "Member Success Stories",
+    "startISO": "2024-03-01T19:00:00-06:00",
+    "endISO": "2024-03-01T20:30:00-06:00",
+    "zoomUrl": "https://zoom.us/j/789123456",
+    "eventbriteUrl": "https://www.eventbrite.com/e/success-stories-showcase-tickets-789123456",
+    "description": "Hear from fellow members about their wins and breakthroughs. Get inspired and learn from real examples."
+  }
+]

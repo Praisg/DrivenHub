@@ -1,0 +1,23 @@
+[
+  {
+    "id": "announcement-1",
+    "title": "Welcome to LAB Member Hub!",
+    "body": "Everything you need is now in one place. No new tools to learn—just familiar links and easy access to all your LAB resources.",
+    "link": "/resources",
+    "dateISO": "2024-01-15T10:00:00Z"
+  },
+  {
+    "id": "announcement-2", 
+    "title": "New Coaching Sessions Available",
+    "body": "Book your 1-on-1 coaching session with our team. We've added more slots this month to accommodate everyone.",
+    "link": "/coaching",
+    "dateISO": "2024-01-10T14:30:00Z"
+  },
+  {
+    "id": "announcement-3",
+    "title": "Monthly Member Survey",
+    "body": "Help us improve your experience by taking our quick 2-minute survey. Your feedback shapes everything we do.",
+    "link": "/surveys",
+    "dateISO": "2024-01-05T09:00:00Z"
+  }
+]
