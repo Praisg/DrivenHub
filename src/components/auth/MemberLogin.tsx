@@ -17,9 +17,25 @@ export default function MemberLogin() {
     setError('');
 
     try {
-      // Check if it's a member login
-      const members = getRegisteredMembers();
-      const foundMember = members.find(m => m.email.toLowerCase() === email.toLowerCase());
+      // Try Supabase first via API
+      let foundMember: any | null = null;
+      try {
+        const res = await fetch('/api/members/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        });
+        if (res.ok) {
+          const { member } = await res.json();
+          foundMember = member;
+        }
+      } catch {}
+
+      if (!foundMember) {
+        // Fallback to local demo storage
+        const members = getRegisteredMembers();
+        foundMember = members.find(m => m.email.toLowerCase() === email.toLowerCase()) || null;
+      }
       
       if (foundMember) {
         // Member login - no password required for demo

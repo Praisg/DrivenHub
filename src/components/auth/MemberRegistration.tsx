@@ -3,6 +3,19 @@
 import { useState } from 'react';
 import { Card, Button } from '@/components';
 import { addNewMember } from '@/lib/data';
+
+async function registerViaApi(name: string, email: string) {
+  const res = await fetch('/api/members/register', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, email })
+  });
+  if (!res.ok) {
+    const j = await res.json().catch(() => ({}));
+    throw new Error(j.error || 'Registration failed');
+  }
+  return res.json();
+}
 import { useRouter } from 'next/navigation';
 
 interface MemberRegistrationProps {
@@ -44,11 +57,15 @@ export default function MemberRegistration({ onRegistrationComplete }: MemberReg
         assignedSkills: []
       };
 
-      // Save to database
-      const success = addNewMember(newMember);
-      
-      if (!success) {
-        throw new Error('Failed to save member to database');
+      // Save to Supabase via API (and maintain local fallback)
+      try {
+        await registerViaApi(newMember.name, newMember.email);
+      } catch (apiErr) {
+        // Fallback to local storage demo if API unavailable
+        const success = addNewMember(newMember);
+        if (!success) {
+          throw apiErr;
+        }
       }
       
       console.log('New member registration:', newMember);

@@ -156,6 +156,8 @@ data/                     # JSON data files
 | `NEXT_PUBLIC_STRIPE_CHECKOUT_URL` | Stripe checkout URL | `https://buy.stripe.com/test_XXXX` |
 | `NEXT_PUBLIC_SUBSTACK_URL` | Substack newsletter URL | `https://your-substack.substack.com` |
 | `NEXT_PUBLIC_SLACK_URL` | Slack workspace URL | `https://yourworkspace.slack.com` |
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL | `https://xxxx.supabase.co` |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon public key | `eyJhbGciOi...` |
 
 ## Features
 
