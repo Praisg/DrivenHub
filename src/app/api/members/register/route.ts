@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { getSupabase } from '@/lib/supabase';
 
 export async function POST(req: NextRequest) {
   try {
@@ -9,6 +9,8 @@ export async function POST(req: NextRequest) {
     if (!name || !email) {
       return NextResponse.json({ error: 'Missing name or email' }, { status: 400 });
     }
+
+    const supabase = getSupabase();
 
     // Upsert by email so duplicate registrations don't blow up
     const { data, error } = await supabase

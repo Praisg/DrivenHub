@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { getSupabase } from '@/lib/supabase';
 
 export async function POST(req: NextRequest) {
   try {
@@ -7,6 +7,8 @@ export async function POST(req: NextRequest) {
     if (!email) {
       return NextResponse.json({ error: 'Missing email' }, { status: 400 });
     }
+
+    const supabase = getSupabase();
 
     const { data, error } = await supabase
       .from('members')
