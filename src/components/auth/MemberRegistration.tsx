@@ -57,13 +57,13 @@ export default function MemberRegistration({ onRegistrationComplete }: MemberReg
       await new Promise(resolve => setTimeout(resolve, 1000));
 
       setIsRegistered(true);
-      setStatus('Registration successful! Redirecting to login options...');
+      setStatus('Registration successful! Redirecting to member sign-in...');
       onRegistrationComplete?.(newMember);
 
-      // Redirect to main page after successful registration
+      // Redirect to member login after successful registration
       setTimeout(() => {
-        router.push('/');
-      }, 2000);
+        router.push('/member/login');
+      }, 1500);
 
     } catch (error) {
       console.error('Registration error:', error);
