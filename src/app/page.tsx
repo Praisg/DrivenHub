@@ -1,9 +1,36 @@
 "use client";
 
+import { useEffect, useState } from 'react';
 import { Card, Button } from '@/components';
+import Dashboard from '@/components/Dashboard';
 
 export default function Home() {
+  const [user, setUser] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
+  useEffect(() => {
+    const checkAuth = () => {
+      try {
+        const stored = localStorage.getItem('driven-current-user');
+        if (stored) {
+          setUser(JSON.parse(stored));
+        }
+      } catch (error) {
+        console.error('Error loading user:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    checkAuth();
+  }, []);
+
+  // If user is logged in, show Dashboard
+  if (!isLoading && user) {
+    return <Dashboard user={user} />;
+  }
+
+  // If not logged in, show login/register page
   return (
     <div className="min-h-screen bg-white">
       {/* Header */}

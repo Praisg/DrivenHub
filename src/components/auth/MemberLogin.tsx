@@ -48,7 +48,7 @@ export default function MemberLogin() {
         
         // Store member session
         localStorage.setItem('driven-current-user', JSON.stringify(memberUser));
-        router.push('/dashboard');
+        router.push('/');
         return;
       }
 

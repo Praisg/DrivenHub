@@ -14,8 +14,8 @@ export default function MemberLoginPage() {
       if (storedUser) {
         const userData = JSON.parse(storedUser);
         if (userData.role === 'admin') {
-          // Admin logged in, redirect to admin dashboard
-          router.push('/admin/dashboard');
+          // Admin logged in, redirect to home
+          router.push('/');
           return;
         } else {
           // Member logged in - clear their session so they can log in as different user

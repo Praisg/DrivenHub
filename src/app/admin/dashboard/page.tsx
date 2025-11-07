@@ -48,7 +48,7 @@ export default function AdminDashboardPage() {
         if (userData.role === 'admin') {
           setUser(userData);
         } else {
-          router.push('/dashboard');
+          router.push('/');
         }
       } else {
         router.push('/admin/login');

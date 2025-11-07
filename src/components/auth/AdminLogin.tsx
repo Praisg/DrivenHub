@@ -28,7 +28,7 @@ export default function AdminLogin() {
         
         // Store admin session
         localStorage.setItem('driven-current-user', JSON.stringify(adminUser));
-        router.push('/admin/dashboard');
+        router.push('/');
         return;
       }
 
