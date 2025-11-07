@@ -77,6 +77,9 @@ export default function MemberRegistration({ onRegistrationComplete }: MemberReg
       setStatus('Registration successful! Redirecting to member sign-in...');
       onRegistrationComplete?.(newMember);
 
+      // Clear any existing session before redirecting to login
+      localStorage.removeItem('driven-current-user');
+
       // Redirect to member login after successful registration
       setTimeout(() => {
         router.push('/member/login');

@@ -18,9 +18,8 @@ export default function MemberLoginPage() {
           router.push('/admin/dashboard');
           return;
         } else {
-          // Member already logged in, redirect to member dashboard
-          router.push('/dashboard');
-          return;
+          // Member logged in - clear their session so they can log in as different user
+          localStorage.removeItem('driven-current-user');
         }
       }
       setIsLoading(false);
