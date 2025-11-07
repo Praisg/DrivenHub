@@ -15,6 +15,9 @@ export default function Home() {
               <p className="text-lg mt-2 driven-header">Connect, grow, and support each other</p>
             </div>
             <div className="flex items-center space-x-4">
+              <Button href="/admin/login" variant="outline" className="mr-2">
+                Admin Login
+              </Button>
               <Button href="/register" variant="outline" className="mr-2">
                 Register
               </Button>
@@ -30,7 +33,7 @@ export default function Home() {
           <p className="text-xl text-gray-600 mb-8">Choose how you&apos;d like to access the platform</p>
         </div>
 
-        <div className="max-w-md mx-auto">
+        <div className="max-w-md mx-auto space-y-6">
           {/* Member Login Card */}
           <Card className="text-center p-8">
             <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -48,6 +51,20 @@ export default function Home() {
                 Register as Member
               </Button>
             </div>
+          </Card>
+
+          {/* Admin Access Card */}
+          <Card className="text-center p-6 border-2 border-purple-200 bg-purple-50">
+            <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <span className="text-xl">⚙️</span>
+            </div>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Admin Access</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Manage members, assign skills, and oversee the platform
+            </p>
+            <Button href="/admin/login" className="w-full bg-purple-600 hover:bg-purple-700">
+              Admin Login
+            </Button>
           </Card>
         </div>
 
