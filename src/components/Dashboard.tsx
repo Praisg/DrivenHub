@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getAnnouncements, getEvents, getEmails, getMembers, getRegisteredMembers, getSlackPosts } from '@/lib/data';
+import { getAnnouncements, getEvents, getEmails, getMembers, getRegisteredMembers } from '@/lib/data';
 import { sortEventsByDate, isUpcoming } from '@/lib/time';
-import { Card, Button, MemberDirectory, SlackFeed } from '@/components';
+import { Card, Button, MemberDirectory } from '@/components';
 import { CalendarIcon, UserGroupIcon, PaperAirplaneIcon, BriefcaseIcon } from '@heroicons/react/24/outline';
 import SkillsWallet from '@/components/SkillsWallet';
 import LevelBasedSkillAssignment from '@/components/admin/LevelBasedSkillAssignment';
@@ -25,7 +25,6 @@ export default function Dashboard({ user }: DashboardProps) {
   const emails = getEmails();
   const members = getMembers();
   const skills = getSkills();
-  const slackPosts = getSlackPosts();
   const upcomingEvents = sortEventsByDate(events).filter(event => isUpcoming(event.startISO));
   
   const [activeSection, setActiveSection] = useState<'home' | 'skills'>('home');
@@ -117,15 +116,6 @@ export default function Dashboard({ user }: DashboardProps) {
             >
               Skills
             </button>
-            {user.role === 'admin' && (
-              <Button
-                href="/admin/dashboard"
-                variant="outline"
-                className="ml-auto"
-              >
-                Admin Dashboard
-              </Button>
-            )}
           </nav>
         </div>
       </div>
@@ -211,22 +201,6 @@ export default function Dashboard({ user }: DashboardProps) {
                       </div>
                     ))}
                   </div>
-                </Card>
-
-                {/* Slack Feed */}
-                <Card>
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-xl font-semibold text-gray-900">Community Updates</h2>
-                    <Button 
-                      onClick={() => setIsSlackModalOpen(true)}
-                      variant="outline"
-                      size="sm"
-                    >
-                      <PaperAirplaneIcon className="w-4 h-4 mr-2" />
-                      Join Slack
-                    </Button>
-                  </div>
-                  <SlackFeed posts={slackPosts} />
                 </Card>
 
               </div>
