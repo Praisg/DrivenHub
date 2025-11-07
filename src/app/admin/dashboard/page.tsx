@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { getRegisteredMembers, getSkills, getMemberSkills } from '@/lib/data';
+import { getRegisteredMembers, getSkills, getMemberSkills, saveRegisteredMembers, saveMemberSkills } from '@/lib/data';
 import { Button } from '@/components';
 import SkillsWallet from '@/components/SkillsWallet';
 import LevelBasedSkillAssignment from '@/components/admin/LevelBasedSkillAssignment';
@@ -14,6 +14,8 @@ export default function AdminDashboardPage() {
   const [user, setUser] = useState<{id: string; name: string; role: string} | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'skills-wallet' | 'assign-skills' | 'manage-skills' | 'create-skills'>('create-skills');
+  const [isClearing, setIsClearing] = useState(false);
+  const [clearStatus, setClearStatus] = useState('');
   const router = useRouter();
 
   const [skills, setSkills] = useState(getSkills());
@@ -73,6 +75,47 @@ export default function AdminDashboardPage() {
     setSkills(getSkills());
   };
 
+  const handleClearAllDemoData = async () => {
+    if (!confirm('⚠️ WARNING: This will delete ALL registered members from the database and clear localStorage. This action cannot be undone. Are you sure?')) {
+      return;
+    }
+
+    setIsClearing(true);
+    setClearStatus('Clearing demo data...');
+
+    try {
+      // Clear Supabase members
+      const res = await fetch('/api/members/clear', {
+        method: 'DELETE'
+      });
+
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({}));
+        throw new Error(error.error || 'Failed to clear Supabase data');
+      }
+
+      // Clear localStorage by saving empty arrays
+      saveRegisteredMembers([]);
+      saveMemberSkills([]);
+      // Note: We keep 'driven-current-user' so admin stays logged in
+
+      setClearStatus('✅ All demo data cleared successfully!');
+      refreshMemberSkills();
+
+      // Clear status message after 3 seconds
+      setTimeout(() => {
+        setClearStatus('');
+      }, 3000);
+    } catch (error: any) {
+      setClearStatus(`❌ Error: ${error.message}`);
+      setTimeout(() => {
+        setClearStatus('');
+      }, 5000);
+    } finally {
+      setIsClearing(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -111,6 +154,34 @@ export default function AdminDashboardPage() {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Clear Demo Data Section */}
+        <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-yellow-900 mb-1">Clear Demo Data</h3>
+              <p className="text-sm text-yellow-700">Remove all registered members from database and localStorage</p>
+            </div>
+            <Button
+              onClick={handleClearAllDemoData}
+              disabled={isClearing}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {isClearing ? 'Clearing...' : 'Clear All Members'}
+            </Button>
+          </div>
+          {clearStatus && (
+            <div className={`mt-3 p-2 rounded text-sm ${
+              clearStatus.includes('✅') 
+                ? 'bg-green-100 text-green-800' 
+                : clearStatus.includes('❌')
+                ? 'bg-red-100 text-red-800'
+                : 'bg-blue-100 text-blue-800'
+            }`}>
+              {clearStatus}
+            </div>
+          )}
+        </div>
+
         <div className="mb-6">
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Skills Management</h2>
           <p className="text-gray-600">Manage skills, assign to members, and track progress</p>
