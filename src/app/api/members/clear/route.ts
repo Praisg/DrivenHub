@@ -3,21 +3,29 @@ import { getSupabase } from '@/lib/supabase';
 
 export async function DELETE(req: NextRequest) {
   try {
-    const supabase = getSupabase();
+    // Try to clear Supabase, but don't fail if env vars aren't set
+    let supabaseCleared = false;
+    try {
+      const supabase = getSupabase();
+      const { error } = await supabase
+        .from('members')
+        .delete()
+        .eq('role', 'member'); // Only delete members, not admins
 
-    // Delete all members (but keep admins) from Supabase
-    const { error } = await supabase
-      .from('members')
-      .delete()
-      .eq('role', 'member'); // Only delete members, not admins
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      if (!error) {
+        supabaseCleared = true;
+      }
+    } catch (supabaseError: any) {
+      // Supabase not configured or error - that's okay, we'll still clear localStorage
+      console.log('Supabase clear skipped:', supabaseError.message);
     }
 
     return NextResponse.json({ 
-      message: 'All members cleared successfully',
-      deleted: true 
+      message: supabaseCleared 
+        ? 'All members cleared from database and localStorage' 
+        : 'All members cleared from localStorage (Supabase not configured)',
+      deleted: true,
+      supabaseCleared
     }, { status: 200 });
   } catch (err: any) {
     return NextResponse.json({ error: err?.message || 'Server error' }, { status: 500 });

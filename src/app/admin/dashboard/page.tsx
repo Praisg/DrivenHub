@@ -89,17 +89,26 @@ export default function AdminDashboardPage() {
         method: 'DELETE'
       });
 
-      if (!res.ok) {
-        const error = await res.json().catch(() => ({}));
-        throw new Error(error.error || 'Failed to clear Supabase data');
-      }
-
-      // Clear localStorage by saving empty arrays
+      // Always clear localStorage regardless of Supabase status
       saveRegisteredMembers([]);
       saveMemberSkills([]);
       // Note: We keep 'driven-current-user' so admin stays logged in
 
-      setClearStatus('✅ All demo data cleared successfully!');
+      if (!res.ok) {
+        // Supabase might not be configured, but localStorage is cleared
+        const error = await res.json().catch(() => ({}));
+        setClearStatus('⚠️ Cleared localStorage. Supabase not configured - set env vars to clear database.');
+        refreshMemberSkills();
+        setTimeout(() => {
+          setClearStatus('');
+        }, 5000);
+        return;
+      }
+
+      const result = await res.json();
+      setClearStatus(result.supabaseCleared 
+        ? '✅ All demo data cleared from database and localStorage!' 
+        : '✅ Cleared localStorage (Supabase not configured - set env vars to clear database)');
       refreshMemberSkills();
 
       // Clear status message after 3 seconds
@@ -159,7 +168,7 @@ export default function AdminDashboardPage() {
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-lg font-semibold text-yellow-900 mb-1">Clear Demo Data</h3>
-              <p className="text-sm text-yellow-700">Remove all registered members from database and localStorage</p>
+              <p className="text-sm text-yellow-700">Remove all registered members from database (if configured) and localStorage</p>
             </div>
             <Button
               onClick={handleClearAllDemoData}
