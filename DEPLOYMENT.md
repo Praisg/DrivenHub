@@ -128,3 +128,4 @@ NEXT_PUBLIC_APP_URL=https://your-app.vercel.app
 
 **Total Cost: $0/month** for small to medium usage!
 
+

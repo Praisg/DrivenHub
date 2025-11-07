@@ -89,3 +89,4 @@ CREATE POLICY "Admins can manage skills" ON skills
     )
   );
 
+
