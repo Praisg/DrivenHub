@@ -4,16 +4,23 @@ import { useState } from 'react';
 import { Card, Button } from '@/components';
 import { addNewMember } from '@/lib/data';
 
-async function registerViaApi(name: string, email: string) {
+async function registerViaApi(name: string, email: string, password: string): Promise<any> {
   const res = await fetch('/api/members/register', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, email })
+    body: JSON.stringify({ name, email, password })
   });
+  
   if (!res.ok) {
     const j = await res.json().catch(() => ({}));
-    throw new Error(j.error || 'Registration failed');
+    const errorMessage = j.error || 'Registration failed';
+    // Create error object instead of throwing immediately
+    const error = new Error(errorMessage);
+    // Add status code for handling
+    (error as any).status = res.status;
+    throw error;
   }
+  
   return res.json();
 }
 import { useRouter } from 'next/navigation';
@@ -25,6 +32,8 @@ interface MemberRegistrationProps {
 export default function MemberRegistration({ onRegistrationComplete }: MemberRegistrationProps) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [status, setStatus] = useState('');
   const [isRegistered, setIsRegistered] = useState(false);
@@ -33,8 +42,20 @@ export default function MemberRegistration({ onRegistrationComplete }: MemberReg
   const handleRegistration = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!name.trim() || !email.trim()) {
+    if (!name.trim() || !email.trim() || !password) {
       setStatus('Please fill in all fields.');
+      setTimeout(() => setStatus(''), 3000);
+      return;
+    }
+
+    if (password.length < 6) {
+      setStatus('Password must be at least 6 characters long.');
+      setTimeout(() => setStatus(''), 3000);
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setStatus('Passwords do not match.');
       setTimeout(() => setStatus(''), 3000);
       return;
     }
@@ -43,39 +64,12 @@ export default function MemberRegistration({ onRegistrationComplete }: MemberReg
     setStatus('Registering...');
 
     try {
-      // Generate unique ID
-      const memberId = `member-${Date.now()}`;
-      const registrationDate = new Date().toISOString().split('T')[0];
-
-      // Create new member data
-      const newMember = {
-        id: memberId,
-        name: name.trim(),
-        email: email.trim(),
-        registrationDate,
-        status: 'active',
-        assignedSkills: []
-      };
-
-      // Save to Supabase via API (and maintain local fallback)
-      try {
-        await registerViaApi(newMember.name, newMember.email);
-      } catch (apiErr) {
-        // Fallback to local storage demo if API unavailable
-        const success = addNewMember(newMember);
-        if (!success) {
-          throw apiErr;
-        }
-      }
+      // Save to Supabase via API
+      await registerViaApi(name.trim(), email.trim(), password);
       
-      console.log('New member registration:', newMember);
-      
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
       setIsRegistered(true);
       setStatus('Registration successful! Redirecting to member sign-in...');
-      onRegistrationComplete?.(newMember);
+      onRegistrationComplete?.({ name: name.trim(), email: email.trim() });
 
       // Clear any existing session before redirecting to login
       localStorage.removeItem('driven-current-user');
@@ -85,9 +79,19 @@ export default function MemberRegistration({ onRegistrationComplete }: MemberReg
         router.push('/member/login');
       }, 1500);
 
-    } catch (error) {
-      console.error('Registration error:', error);
-      setStatus('Registration failed. Please try again.');
+    } catch (error: any) {
+      // Handle error gracefully without throwing to Next.js error boundary
+      const errorMessage = error?.message || 'Registration failed. Please try again.';
+      
+      // Provide user-friendly message for duplicate email
+      if (error?.status === 409 || errorMessage.includes('already exists')) {
+        setStatus('An account with this email already exists. Please log in instead.');
+        setTimeout(() => {
+          router.push('/member/login');
+        }, 3000);
+      } else {
+        setStatus(errorMessage);
+      }
     } finally {
       setIsLoading(false);
       setTimeout(() => setStatus(''), 5000);
@@ -102,7 +106,7 @@ export default function MemberRegistration({ onRegistrationComplete }: MemberReg
             <div className="text-6xl mb-4">🎉</div>
             <h1 className="text-2xl font-bold text-gray-900 mb-4">Welcome!</h1>
             <p className="text-gray-600 mb-4">
-              You've successfully registered for the skills program.
+              You've successfully registered for Driven to Wellness Lab.
             </p>
             <p className="text-sm text-gray-500">
               You'll be redirected to the login options shortly.
@@ -117,7 +121,7 @@ export default function MemberRegistration({ onRegistrationComplete }: MemberReg
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <Card className="w-full max-w-md">
         <div className="text-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Join Skills Program</h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Join Driven to Wellness Lab</h1>
           <p className="text-gray-600">Register to start your learning journey</p>
         </div>
 
@@ -149,6 +153,38 @@ export default function MemberRegistration({ onRegistrationComplete }: MemberReg
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Enter your email"
               required
+            />
+          </div>
+
+          <div>
+            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+              Password
+            </label>
+            <input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Enter password (min. 6 characters)"
+              required
+              minLength={6}
+            />
+          </div>
+
+          <div>
+            <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
+              Confirm Password
+            </label>
+            <input
+              id="confirmPassword"
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Confirm your password"
+              required
+              minLength={6}
             />
           </div>
 

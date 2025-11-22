@@ -2,13 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import { getAnnouncements, getEvents, getEmails, getMembers, getRegisteredMembers } from '@/lib/data';
+import { getSkillsFromDB, getMemberSkillsFromDB } from '@/lib/db-data';
 import { sortEventsByDate, isUpcoming } from '@/lib/time';
 import { Card, Button, MemberDirectory } from '@/components';
-import { CalendarIcon, UserGroupIcon, PaperAirplaneIcon, BriefcaseIcon } from '@heroicons/react/24/outline';
+import { CalendarIcon, UserGroupIcon, PaperAirplaneIcon, BriefcaseIcon, AcademicCapIcon } from '@heroicons/react/24/outline';
 import SkillsWallet from '@/components/SkillsWallet';
 import LevelBasedSkillAssignment from '@/components/admin/LevelBasedSkillAssignment';
 import SkillManagement from '@/components/admin/SkillManagement';
-import { getSkills, getMemberSkills } from '@/lib/data';
 
 interface DashboardProps {
   user: {
@@ -24,43 +24,52 @@ export default function Dashboard({ user }: DashboardProps) {
   const events = getEvents();
   const emails = getEmails();
   const members = getMembers();
-  const skills = getSkills();
   const upcomingEvents = sortEventsByDate(events).filter(event => isUpcoming(event.startISO));
   
   const [activeSection, setActiveSection] = useState<'home' | 'skills'>('home');
   const [activeAdminTab, setActiveAdminTab] = useState<'skills-wallet' | 'assign-skills' | 'manage-skills'>('skills-wallet');
   const [isSlackModalOpen, setIsSlackModalOpen] = useState(false);
-  const [memberSkills, setMemberSkills] = useState(getMemberSkills());
+  const [skills, setSkills] = useState<any[]>([]);
+  const [memberSkills, setMemberSkills] = useState<any[]>([]);
   const [registeredMembers, setRegisteredMembers] = useState(getRegisteredMembers());
 
-  // Refresh member skills data periodically
+  // Load skills and member skills from database
   useEffect(() => {
-    const refreshData = () => {
-      const latestMemberSkills = getMemberSkills();
-      const latestRegisteredMembers = getRegisteredMembers();
-      setMemberSkills(latestMemberSkills);
-      setRegisteredMembers(latestRegisteredMembers);
+    const loadData = async () => {
+      try {
+        const [skillsData, memberSkillsData] = await Promise.all([
+          getSkillsFromDB(),
+          getMemberSkillsFromDB(user.id),
+        ]);
+        setSkills(skillsData);
+        setMemberSkills(memberSkillsData);
+        setRegisteredMembers(getRegisteredMembers());
+      } catch (error) {
+        console.error('Error loading dashboard data:', error);
+      }
     };
 
-    // Refresh immediately
-    refreshData();
+    loadData();
 
-    // Refresh every 3 seconds to catch new assignments
-    const interval = setInterval(refreshData, 3000);
+    // Refresh every 5 seconds to catch new assignments
+    const interval = setInterval(loadData, 5000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [user.id]);
 
-  const handleLogout = () => {
-    localStorage.removeItem('driven-current-user');
-    window.location.href = '/member/login';
-  };
 
-  const refreshMemberSkills = () => {
-    const latestMemberSkills = getMemberSkills();
-    const latestRegisteredMembers = getRegisteredMembers();
-    setMemberSkills(latestMemberSkills);
-    setRegisteredMembers(latestRegisteredMembers);
+  const refreshMemberSkills = async () => {
+    try {
+      const [skillsData, memberSkillsData] = await Promise.all([
+        getSkillsFromDB(),
+        getMemberSkillsFromDB(user.id),
+      ]);
+      setSkills(skillsData);
+      setMemberSkills(memberSkillsData);
+      setRegisteredMembers(getRegisteredMembers());
+    } catch (error) {
+      console.error('Error refreshing skills:', error);
+    }
   };
 
   const SlackRedirect = () => {
@@ -72,53 +81,6 @@ export default function Dashboard({ user }: DashboardProps) {
 
   return (
     <div className="min-h-screen bg-white">
-      {/* Header */}
-      <div className="driven-header">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold driven-header">LAB Member Hub</h1>
-              <p className="text-lg mt-2 driven-header">Welcome back, {user.name}!</p>
-            </div>
-            <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-600 capitalize">{user.role}</span>
-              {!(user.role === 'member' && activeSection === 'skills') && (
-                <Button onClick={handleLogout} variant="outline">
-                  Logout
-                </Button>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Navigation */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <nav className="flex space-x-8">
-            <button
-              onClick={() => setActiveSection('home')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeSection === 'home'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              Home
-            </button>
-            <button
-              onClick={() => setActiveSection('skills')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeSection === 'skills'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              Skills
-            </button>
-          </nav>
-        </div>
-      </div>
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -138,7 +100,7 @@ export default function Dashboard({ user }: DashboardProps) {
                       <PaperAirplaneIcon className="w-5 h-5 mr-2" />
                       Join Slack
                     </Button>
-                    <Button href="/coaching" className="w-full justify-start">
+                    <Button href={user.role === 'admin' ? '/admin/home' : '/member/coaching'} className="w-full justify-start">
                       <BriefcaseIcon className="w-5 h-5 mr-2" />
                       Book Coaching
                     </Button>
@@ -168,6 +130,73 @@ export default function Dashboard({ user }: DashboardProps) {
             {/* Main Content Area */}
             <div className="lg:col-span-3">
               <div className="space-y-8">
+                {/* Slack Community - Prominent Section */}
+                <Card className="bg-gradient-to-r from-purple-50 to-blue-50 border-2 border-purple-200">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4">
+                      <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center">
+                        <PaperAirplaneIcon className="w-8 h-8 text-purple-600" />
+                      </div>
+                      <div>
+                        <h2 className="text-2xl font-bold text-gray-900 mb-1">Join Our Slack Community</h2>
+                        <p className="text-gray-600">Connect with members, get help, and stay updated</p>
+                      </div>
+                    </div>
+                    <Button 
+                      onClick={() => {
+                        setIsSlackModalOpen(true);
+                      }}
+                      className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3"
+                    >
+                      Go to Slack
+                    </Button>
+                  </div>
+                </Card>
+
+                {/* Quick Links */}
+                <Card>
+                  <h2 className="text-xl font-semibold text-gray-900 mb-4">Quick Links</h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {user.role === 'member' && (
+                      <Button href="/member/skills" className="w-full justify-start h-auto py-4" variant="outline">
+                        <BriefcaseIcon className="w-6 h-6 mr-3" />
+                        <div className="text-left">
+                          <div className="font-semibold">Skills Wallet</div>
+                          <div className="text-sm text-gray-600">Manage your skills</div>
+                        </div>
+                      </Button>
+                    )}
+                    <Button href={user.role === 'admin' ? '/admin/events' : '/member/events'} className="w-full justify-start h-auto py-4" variant="outline">
+                      <CalendarIcon className="w-6 h-6 mr-3" />
+                      <div className="text-left">
+                        <div className="font-semibold">Events</div>
+                        <div className="text-sm text-gray-600">View upcoming events</div>
+                      </div>
+                    </Button>
+                    <Button href={user.role === 'admin' ? '/admin/home' : '/member/coaching'} className="w-full justify-start h-auto py-4" variant="outline">
+                      <AcademicCapIcon className="w-6 h-6 mr-3" />
+                      <div className="text-left">
+                        <div className="font-semibold">Book Coaching</div>
+                        <div className="text-sm text-gray-600">Schedule a session</div>
+                      </div>
+                    </Button>
+                    <Button href={user.role === 'admin' ? '/admin/home' : '/member/resources'} className="w-full justify-start h-auto py-4" variant="outline">
+                      <span className="text-2xl mr-3">📚</span>
+                      <div className="text-left">
+                        <div className="font-semibold">Resources</div>
+                        <div className="text-sm text-gray-600">Learning materials</div>
+                      </div>
+                    </Button>
+                    <Button href={user.role === 'admin' ? '/admin/surveys' : '/member/surveys'} className="w-full justify-start h-auto py-4" variant="outline">
+                      <span className="text-2xl mr-3">📊</span>
+                      <div className="text-left">
+                        <div className="font-semibold">Surveys</div>
+                        <div className="text-sm text-gray-600">Share your feedback</div>
+                      </div>
+                    </Button>
+                  </div>
+                </Card>
+
                 {/* Announcements */}
                 <Card>
                   <h2 className="text-xl font-semibold text-gray-900 mb-4">Latest Announcements</h2>

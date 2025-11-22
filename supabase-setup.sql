@@ -89,4 +89,90 @@ CREATE POLICY "Admins can manage skills" ON skills
     )
   );
 
+-- Create events table for Google Calendar integration
+CREATE TABLE events (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  google_event_id TEXT UNIQUE NOT NULL,
+  title TEXT NOT NULL,
+  description TEXT,
+  start_time TIMESTAMP WITH TIME ZONE NOT NULL,
+  end_time TIMESTAMP WITH TIME ZONE NOT NULL,
+  organizer_email TEXT NOT NULL,
+  attendees_emails TEXT[] DEFAULT '{}',
+  zoom_url TEXT,
+  eventbrite_url TEXT,
+  location TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create index for efficient email lookups
+CREATE INDEX idx_events_attendees_emails ON events USING GIN(attendees_emails);
+CREATE INDEX idx_events_start_time ON events(start_time);
+CREATE INDEX idx_events_google_event_id ON events(google_event_id);
+
+-- Create google_oauth_tokens table for storing OAuth refresh tokens
+CREATE TABLE google_oauth_tokens (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES members(id) ON DELETE CASCADE,
+  email TEXT NOT NULL,
+  refresh_token TEXT NOT NULL,
+  access_token TEXT,
+  token_expires_at TIMESTAMP WITH TIME ZONE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(user_id, email)
+);
+
+-- Enable RLS on new tables
+ALTER TABLE events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE google_oauth_tokens ENABLE ROW LEVEL SECURITY;
+
+-- Create policies for events table
+-- Users can only see events where their email is in attendees_emails
+CREATE POLICY "Users can view events they're invited to" ON events
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM members 
+      WHERE members.email = ANY(events.attendees_emails)
+      AND members.id::text = auth.uid()::text
+    )
+  );
+
+-- Admins can view all events
+CREATE POLICY "Admins can view all events" ON events
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM members 
+      WHERE id::text = auth.uid()::text 
+      AND role = 'admin'
+    )
+  );
+
+-- Admins can manage events
+CREATE POLICY "Admins can manage events" ON events
+  FOR ALL USING (
+    EXISTS (
+      SELECT 1 FROM members 
+      WHERE id::text = auth.uid()::text 
+      AND role = 'admin'
+    )
+  );
+
+-- Create policies for google_oauth_tokens table
+-- Users can only access their own tokens
+CREATE POLICY "Users can manage their own tokens" ON google_oauth_tokens
+  FOR ALL USING (user_id::text = auth.uid()::text);
+
+-- Admins can view all tokens (for debugging)
+CREATE POLICY "Admins can view all tokens" ON google_oauth_tokens
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM members 
+      WHERE id::text = auth.uid()::text 
+      AND role = 'admin'
+    )
+  );
+
+
 

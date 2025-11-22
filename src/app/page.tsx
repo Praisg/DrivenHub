@@ -1,8 +1,25 @@
 "use client";
 
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, Button } from '@/components';
+import { getCurrentUser } from '@/lib/auth';
 
-export default function Home() {
+export default function LandingPage() {
+  const router = useRouter();
+
+  useEffect(() => {
+    // Check if user is already logged in
+    const user = getCurrentUser();
+    if (user) {
+      // Redirect based on role
+      if (user.role === 'admin') {
+        router.replace('/admin/home');
+      } else {
+        router.replace('/member/home');
+      }
+    }
+  }, [router]);
 
   return (
     <div className="min-h-screen bg-white">

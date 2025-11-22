@@ -18,10 +18,12 @@ export default function DashboardPage() {
       }
       const user = JSON.parse(stored);
       if (user.role === 'admin') {
-        router.replace('/admin/dashboard');
+        router.replace('/admin/home');
         return;
       }
-      setMemberId(user.id);
+      // Redirect members to new member home
+      router.replace('/member/home');
+      return;
     } finally {
       setIsLoading(false);
     }

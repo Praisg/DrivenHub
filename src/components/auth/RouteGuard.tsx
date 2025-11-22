@@ -21,8 +21,14 @@ export default function RouteGuard({ children, allowedRoles, redirectTo = '/' }:
         
         // Check if user has required role
         if (!allowedRoles.includes(userData.role)) {
-          // Redirect unauthorized users
-          router.push(redirectTo);
+          // Redirect unauthorized users based on their role
+          if (userData.role === 'admin') {
+            router.push('/admin/home');
+          } else if (userData.role === 'member') {
+            router.push('/member/home');
+          } else {
+            router.push(redirectTo);
+          }
           return;
         }
       } else {
@@ -54,5 +60,6 @@ export default function RouteGuard({ children, allowedRoles, redirectTo = '/' }:
 
   return <>{children}</>;
 }
+
 
 

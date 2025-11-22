@@ -16,22 +16,79 @@ export default function MemberDashboard({ memberId }: MemberDashboardProps) {
   const [status, setStatus] = useState('');
 
   useEffect(() => {
-    const loadMemberData = () => {
-      const members = getRegisteredMembers();
-      const memberData = members.find(m => m.id === memberId);
-      const skillsData = getSkills();
-      const memberSkillsData = getMemberSkills();
-      
-      // Find this member's assigned skills
-      const memberSkillsEntry = memberSkillsData.find(ms => ms.memberId === memberId);
-      if (memberSkillsEntry) {
-        memberData.assignedSkills = memberSkillsEntry.skills;
-      } else {
-        memberData.assignedSkills = [];
+    const loadMemberData = async () => {
+      try {
+        // Get current user from localStorage
+        const storedUser = localStorage.getItem('driven-current-user');
+        if (!storedUser) {
+          return;
+        }
+
+        const user = JSON.parse(storedUser);
+        let memberData: any = null;
+
+        // Try to get member from Supabase if we have email
+        if (user.email) {
+          try {
+            // Note: We can't verify password here, so we'll use the stored user data
+            // In production, you'd want to fetch from Supabase with proper auth
+            memberData = {
+              id: user.id,
+              name: user.name,
+              email: user.email,
+              role: user.role,
+              registrationDate: new Date().toISOString().split('T')[0],
+              assignedSkills: []
+            };
+          } catch (err) {
+            // Fallback to local storage
+          }
+        }
+
+        // Fallback to local storage
+        if (!memberData) {
+          const members = getRegisteredMembers();
+          memberData = members.find(m => m.id === memberId || m.email === user.email);
+        }
+
+        // If still no member found, use the stored user data
+        if (!memberData && user) {
+          memberData = {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            registrationDate: new Date().toISOString().split('T')[0],
+            assignedSkills: []
+          };
+        }
+
+        if (!memberData) {
+          console.warn('Member not found');
+          return;
+        }
+
+        const skillsData = getSkills();
+        const memberSkillsData = getMemberSkills();
+        
+        // Find this member's assigned skills (match by ID or email)
+        const memberSkillsEntry = memberSkillsData.find(
+          ms => ms.memberId === memberId || 
+                 ms.memberId === memberData.id ||
+                 (ms.memberName && ms.memberName.toLowerCase() === memberData.name?.toLowerCase())
+        );
+        
+        if (memberSkillsEntry) {
+          memberData.assignedSkills = memberSkillsEntry.skills || [];
+        } else {
+          memberData.assignedSkills = memberData.assignedSkills || [];
+        }
+        
+        setMember(memberData);
+        setSkills(skillsData);
+      } catch (error) {
+        console.error('Error loading member data:', error);
       }
-      
-      setMember(memberData);
-      setSkills(skillsData);
     };
 
     loadMemberData();

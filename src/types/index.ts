@@ -8,12 +8,16 @@ export interface Announcement {
 
 export interface Event {
   id: string;
+  googleEventId?: string;
   title: string;
   startISO: string;
   endISO: string;
   zoomUrl?: string;
   eventbriteUrl?: string;
   description: string;
+  organizerEmail?: string;
+  attendeesEmails?: string[]; // List of invited Gmail addresses
+  location?: string;
 }
 
 export interface Resource {
@@ -73,12 +77,37 @@ export interface Skill {
   category: string;
   icon: string;
   color: string;
-  level: 'primary' | 'secondary' | 'tertiary';
-  parentId?: string;
-  subtopics?: Skill[]; // Sub-skills under this skill
-  content?: SkillContent[]; // Learning materials
+  level: 'Awareness' | 'Embodiment' | 'Mastery';
+  isActive?: boolean;
   createdAt: string;
+  updatedAt?: string;
   createdBy: string;
+  // For display purposes
+  contentCount?: number;
+  progress?: number;
+  completedCount?: number;
+  totalCount?: number;
+}
+
+export interface SkillContentItem {
+  id?: string;
+  skillId: string;
+  title: string;
+  type: 'BOOK' | 'VIDEO' | 'ARTICLE' | 'LINK' | 'OTHER';
+  url?: string;
+  notes?: string;
+  order?: number;
+  display_order?: number;
+  createdAt?: string;
+  updatedAt?: string;
+  // For file uploads
+  file?: File;
+  fileName?: string;
+  fileSize?: number;
+  fileType?: string;
+  fileUrl?: string; // URL after upload
+  // For member view
+  isCompleted?: boolean;
 }
 
 export interface MemberSkill {
@@ -86,21 +115,11 @@ export interface MemberSkill {
   skillName: string;
   level: string;
   assignedDate: string;
-  status: 'assigned' | 'learning' | 'completed' | 'mastered' | 'approved' | 'rejected' | 'on-hold';
+  status: 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED';
   progress: number;
-  currentMilestone: string;
-  completedMilestones: string[];
-  milestoneProgress: {
-    [milestoneId: string]: {
-      completed: boolean;
-      progress: number;
-      completionDate?: string;
-    };
-  };
-  nextTask: string;
-  achievements: string[];
-  completionDate?: string;
-  adminApproved: boolean;
+  completedCount?: number;
+  totalCount?: number;
+  adminApproved?: boolean;
   adminNotes?: string;
 }
 

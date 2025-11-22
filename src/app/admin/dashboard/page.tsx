@@ -8,12 +8,13 @@ import SkillsWallet from '@/components/SkillsWallet';
 import LevelBasedSkillAssignment from '@/components/admin/LevelBasedSkillAssignment';
 import SkillManagement from '@/components/admin/SkillManagement';
 import SkillCreation from '@/components/admin/SkillCreation';
+import GoogleCalendarSync from '@/components/admin/GoogleCalendarSync';
 import RouteGuard from '@/components/auth/RouteGuard';
 
 export default function AdminDashboardPage() {
   const [user, setUser] = useState<{id: string; name: string; role: string} | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'skills-wallet' | 'assign-skills' | 'manage-skills' | 'create-skills'>('create-skills');
+  const [activeTab, setActiveTab] = useState<'skills-wallet' | 'assign-skills' | 'manage-skills' | 'create-skills' | 'calendar'>('create-skills');
   const router = useRouter();
 
   const [skills, setSkills] = useState(getSkills());
@@ -160,6 +161,16 @@ export default function AdminDashboardPage() {
             >
               Manage Skills
             </button>
+            <button
+              onClick={() => setActiveTab('calendar')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'calendar'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Google Calendar
+            </button>
           </nav>
         </div>
 
@@ -197,6 +208,10 @@ export default function AdminDashboardPage() {
               refreshMemberSkills();
             }}
           />
+        )}
+
+        {activeTab === 'calendar' && (
+          <GoogleCalendarSync />
         )}
       </div>
     </div>

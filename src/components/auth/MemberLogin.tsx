@@ -6,7 +6,9 @@ import { Card, Button } from '@/components';
 import { useRouter } from 'next/navigation';
 
 export default function MemberLogin() {
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
@@ -16,44 +18,37 @@ export default function MemberLogin() {
     setIsLoading(true);
     setError('');
 
+    if (!name || !email || !password) {
+      setError('Please fill in all fields.');
+      setIsLoading(false);
+      return;
+    }
+
     try {
       // Try Supabase first via API
-      let foundMember: any | null = null;
-      try {
-        const res = await fetch('/api/members/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email })
-        });
-        if (res.ok) {
-          const { member } = await res.json();
-          foundMember = member;
-        }
-      } catch {}
+      const res = await fetch('/api/members/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, password })
+      });
 
-      if (!foundMember) {
-        // Fallback to local demo storage
-        const members = getRegisteredMembers();
-        foundMember = members.find(m => m.email.toLowerCase() === email.toLowerCase()) || null;
-      }
-      
-      if (foundMember) {
-        // Member login - no password required for demo
+      if (res.ok) {
+        const { member } = await res.json();
         const memberUser = {
-          id: foundMember.id,
-          name: foundMember.name,
-          email: foundMember.email,
+          id: member.id,
+          name: member.name,
+          email: member.email,
           role: 'member'
         };
         
         // Store member session
         localStorage.setItem('driven-current-user', JSON.stringify(memberUser));
-        router.push('/dashboard');
+        router.push('/member/home');
         return;
+      } else {
+        const errorData = await res.json();
+        setError(errorData.error || 'Invalid credentials. Please check your name, email, and password.');
       }
-
-      // No member found
-      setError('No member found with this email address.');
       
     } catch (err) {
       setError('An error occurred during login.');
@@ -72,6 +67,21 @@ export default function MemberLogin() {
 
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
+            <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+              Full Name
+            </label>
+            <input
+              id="name"
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Enter your full name"
+              required
+            />
+          </div>
+
+          <div>
             <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
               Email Address
             </label>
@@ -82,6 +92,21 @@ export default function MemberLogin() {
               onChange={(e) => setEmail(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Enter your email"
+              required
+            />
+          </div>
+
+          <div>
+            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+              Password
+            </label>
+            <input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Enter your password"
               required
             />
           </div>

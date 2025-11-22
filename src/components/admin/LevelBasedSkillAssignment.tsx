@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getMembers, getSkills, getMemberSkills, saveMemberSkills, getRegisteredMembers } from '@/lib/data';
+import { getMembers, saveMemberSkills, getRegisteredMembers } from '@/lib/data';
+import { getSkillsFromDB, getMemberSkillsFromDB } from '@/lib/db-data';
 import { Card, Button } from '@/components';
 import { Member, Skill, MemberSkills } from '@/types';
 
@@ -19,15 +20,41 @@ export default function LevelBasedSkillAssignment({ onAssignmentComplete }: Leve
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    const membersData = getRegisteredMembers();
-    const skillsData = getSkills();
-    const memberSkillsData = getMemberSkills();
-    
-    console.log('Loaded data:', { membersData, skillsData, memberSkillsData });
-    
-    setMembers(membersData);
-    setSkills(skillsData);
-    setMemberSkills(memberSkillsData);
+    const loadData = async () => {
+      setIsLoading(true);
+      try {
+        // Fetch members from database
+        const membersResponse = await fetch('/api/admin/members');
+        if (membersResponse.ok) {
+          const membersResult = await membersResponse.json();
+          setMembers(membersResult.members || []);
+        } else {
+          console.error('Failed to fetch members from database, falling back to local data');
+          const membersData = getRegisteredMembers();
+          setMembers(membersData);
+        }
+        
+        // Fetch skills from database (only active skills)
+        const skillsData = await getSkillsFromDB();
+        // Filter to only show active skills
+        setSkills(skillsData.filter((s: any) => s.isActive !== false));
+        
+        // Fetch member skills from database
+        const memberSkillsData = await getMemberSkillsFromDB();
+        setMemberSkills(memberSkillsData);
+      } catch (error) {
+        console.error('Error loading data:', error);
+        // Fallback to local data only if database fails completely
+        const membersData = getRegisteredMembers();
+        setMembers(membersData);
+        setSkills([]);
+        setMemberSkills([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadData();
   }, []);
 
   const handleMemberSelect = (memberId: string) => {
@@ -54,7 +81,7 @@ export default function LevelBasedSkillAssignment({ onAssignmentComplete }: Leve
     setSelectedMembers([]);
   };
 
-  const selectAllSkillsInLevel = (level: 'primary' | 'secondary' | 'tertiary') => {
+  const selectAllSkillsInLevel = (level: 'Awareness' | 'Embodiment' | 'Mastery') => {
     const skillsInLevel = getAllSkillsByLevel(level);
     const skillIds = skillsInLevel.map(skill => skill.id);
     
@@ -73,33 +100,9 @@ export default function LevelBasedSkillAssignment({ onAssignmentComplete }: Leve
     setSelectedSkills([]);
   };
 
-  const getAllSkillsByLevel = (level: 'primary' | 'secondary' | 'tertiary'): Skill[] => {
-    const result: Skill[] = [];
-    
-    skills.forEach(primarySkill => {
-      if (primarySkill.level === level) {
-        result.push(primarySkill);
-      }
-      
-      if (primarySkill.secondarySkills) {
-        primarySkill.secondarySkills.forEach(secondarySkill => {
-          if (secondarySkill.level === level) {
-            result.push(secondarySkill);
-          }
-          
-          if (secondarySkill.tertiarySkills) {
-            secondarySkill.tertiarySkills.forEach(tertiarySkill => {
-              if (tertiarySkill.level === level) {
-                result.push(tertiarySkill);
-              }
-            });
-          }
-        });
-      }
-    });
-    
-    console.log(`Skills for level ${level}:`, result);
-    return result;
+  const getAllSkillsByLevel = (level: 'Awareness' | 'Embodiment' | 'Mastery'): Skill[] => {
+    // Filter skills by level - new system uses flat structure
+    return skills.filter(skill => skill.level === level);
   };
 
   const assignSkills = async () => {
@@ -146,50 +149,63 @@ export default function LevelBasedSkillAssignment({ onAssignmentComplete }: Leve
             skillName: skill.name,
             level: skill.level,
             assignedDate: today,
-            status: 'assigned',
+            status: 'NOT_STARTED',
             progress: 0,
-            currentMilestone: 'milestone-1',
-            completedMilestones: [],
-            milestoneProgress: {
-              'milestone-1': { completed: false, progress: 0 },
-              'milestone-2': { completed: false, progress: 0 },
-              'milestone-3': { completed: false, progress: 0 },
-              'milestone-4': { completed: false, progress: 0 }
-            },
-            nextTask: 'Start learning this skill',
-            achievements: [],
             adminApproved: false
           });
         });
       });
 
-      const success = saveMemberSkills(updatedMemberSkills);
-      
-      // Also update the member's own data in localStorage for immediate visibility
-      selectedMembers.forEach(memberId => {
+      // Save to database via API
+      let allSuccess = true;
+      for (const memberId of selectedMembers) {
         const memberSkillsEntry = updatedMemberSkills.find(ms => ms.memberId === memberId);
         if (memberSkillsEntry) {
-          // Update the member's assignedSkills in their profile
-          const members = getRegisteredMembers();
-          const memberIndex = members.findIndex(m => m.id === memberId);
-          if (memberIndex !== -1) {
-            members[memberIndex].assignedSkills = memberSkillsEntry.skills;
-            // Save updated members data
-            if (typeof window !== 'undefined') {
-              localStorage.setItem('driven-registered-members', JSON.stringify(members));
+          try {
+            const response = await fetch('/api/admin/assign-skills', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                memberId,
+                skills: memberSkillsEntry.skills,
+              }),
+            });
+
+            if (!response.ok) {
+              const errorData = await response.json();
+              console.error(`Failed to assign skills to member ${memberId}:`, errorData);
+              allSuccess = false;
             }
+          } catch (error) {
+            console.error(`Error assigning skills to member ${memberId}:`, error);
+            allSuccess = false;
           }
         }
-      });
+      }
+
+      // Also save to localStorage for backward compatibility
+      saveMemberSkills(updatedMemberSkills);
       
-      if (success) {
+      if (allSuccess) {
         setMemberSkills(updatedMemberSkills);
         setStatus(`Successfully assigned ${selectedSkills.length} skill(s) to ${selectedMembers.length} member(s)!`);
         setSelectedMembers([]);
         setSelectedSkills([]);
+        
+        // Refresh members list to get updated skill counts
+        try {
+          const membersResponse = await fetch('/api/admin/members');
+          if (membersResponse.ok) {
+            const membersResult = await membersResponse.json();
+            setMembers(membersResult.members || []);
+          }
+        } catch (error) {
+          console.error('Error refreshing members:', error);
+        }
+        
         onAssignmentComplete?.();
       } else {
-        setStatus('Failed to save skill assignments. Please try again.');
+        setStatus('Some skill assignments failed. Please check and try again.');
       }
     } catch (error) {
       console.error('Error assigning skills:', error);
@@ -201,30 +217,22 @@ export default function LevelBasedSkillAssignment({ onAssignmentComplete }: Leve
   };
 
   const findSkillById = (skillId: string): Skill | null => {
-    for (const primarySkill of skills) {
-      if (primarySkill.id === skillId) return primarySkill;
-      
-      if (primarySkill.secondarySkills) {
-        for (const secondarySkill of primarySkill.secondarySkills) {
-          if (secondarySkill.id === skillId) return secondarySkill;
-          
-          if (secondarySkill.tertiarySkills) {
-            for (const tertiarySkill of secondarySkill.tertiarySkills) {
-              if (tertiarySkill.id === skillId) return tertiarySkill;
-            }
-          }
-        }
-      }
-    }
-    return null;
+    // Simple lookup - new system uses flat structure
+    return skills.find(skill => skill.id === skillId) || null;
   };
 
   const getMemberSkillCount = (memberId: string) => {
+    // First check the member's assigned_skills from database
+    const member = members.find(m => m.id === memberId);
+    if (member && member.assignedSkills && Array.isArray(member.assignedSkills)) {
+      return member.assignedSkills.length;
+    }
+    // Fallback to memberSkills state
     const memberSkill = memberSkills.find(ms => ms.memberId === memberId);
     return memberSkill?.skills.length || 0;
   };
 
-  const renderSkillLevel = (level: 'primary' | 'secondary' | 'tertiary', title: string) => {
+  const renderSkillLevel = (level: 'Awareness' | 'Embodiment' | 'Mastery', title: string) => {
     const skillsInLevel = getAllSkillsByLevel(level);
     
     return (
@@ -386,9 +394,9 @@ export default function LevelBasedSkillAssignment({ onAssignmentComplete }: Leve
 
       {/* Skill Levels */}
       <div className="space-y-6">
-        {renderSkillLevel('primary', 'Primary Skills')}
-        {renderSkillLevel('secondary', 'Secondary Skills')}
-        {renderSkillLevel('tertiary', 'Tertiary Skills')}
+        {renderSkillLevel('Awareness', 'Awareness Skills')}
+        {renderSkillLevel('Embodiment', 'Embodiment Skills')}
+        {renderSkillLevel('Mastery', 'Mastery Skills')}
       </div>
 
       {/* Assignment Preview */}

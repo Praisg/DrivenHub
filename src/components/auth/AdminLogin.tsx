@@ -16,24 +16,37 @@ export default function AdminLogin() {
     setIsLoading(true);
     setError('');
 
+    if (!email || !password) {
+      setError('Please fill in all fields.');
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      // Admin login check
-      if (email === 'deborah@drivenpros.com' && password === 'password') {
+      // Admin login via API
+      const res = await fetch('/api/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+
+      if (res.ok) {
+        const { admin } = await res.json();
         const adminUser = {
-          id: 'admin-1',
-          name: 'Deborah Goldstein',
-          email: 'deborah@drivenpros.com',
+          id: admin.id,
+          name: admin.name,
+          email: admin.email,
           role: 'admin'
         };
         
         // Store admin session
         localStorage.setItem('driven-current-user', JSON.stringify(adminUser));
-        router.push('/admin/dashboard');
+        router.push('/admin/home');
         return;
+      } else {
+        const errorData = await res.json();
+        setError(errorData.error || 'Invalid admin credentials. Please check your email and password.');
       }
-
-      // Invalid credentials
-      setError('Invalid admin credentials. Please check your email and password.');
       
     } catch (err) {
       setError('An error occurred during login.');
