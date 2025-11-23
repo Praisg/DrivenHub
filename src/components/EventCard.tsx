@@ -1,10 +1,9 @@
 'use client';
 
 import { Event } from '@/types';
-import { formatEventTime, isUpcoming } from '@/lib/time';
+import { formatEventTime } from '@/lib/time';
 import { downloadICS } from '@/lib/ics';
 import Button from './Button';
-import Badge from './Badge';
 import Card from './Card';
 
 interface EventCardProps {
@@ -13,7 +12,6 @@ interface EventCardProps {
 
 export default function EventCard({ event }: EventCardProps) {
   const { ct, et } = formatEventTime(event.startISO);
-  const upcoming = isUpcoming(event.startISO);
 
   const handleAddToCalendar = () => {
     downloadICS({
@@ -27,14 +25,14 @@ export default function EventCard({ event }: EventCardProps) {
 
   return (
     <Card className="hover:shadow-md transition-shadow">
-      <div className="flex justify-between items-start mb-3">
-        <h3 className="text-lg font-semibold text-gray-900">{event.title}</h3>
-        {upcoming && (
-          <Badge variant="success">Upcoming</Badge>
-        )}
-      </div>
+      {/* Invitation Message */}
+      <p className="text-sm text-gray-600 mb-3">You are being invited to an event</p>
       
-      <div className="space-y-2 mb-4">
+      {/* Event Title */}
+      <h3 className="text-xl font-semibold text-gray-900 mb-4">{event.title}</h3>
+      
+      {/* Time Information */}
+      <div className="space-y-1 mb-6">
         <div className="text-sm text-gray-600">
           <strong>Central Time:</strong> {ct}
         </div>
@@ -43,26 +41,19 @@ export default function EventCard({ event }: EventCardProps) {
         </div>
       </div>
       
-      <p className="text-gray-700 mb-4">{event.description}</p>
-      
+      {/* Action Buttons */}
       <div className="flex flex-wrap gap-2">
         {event.zoomUrl && (
           <Button
             href={event.zoomUrl}
             variant="primary"
             size="sm"
+            target="_blank"
+            rel="noopener noreferrer"
           >
-            Join Zoom
-          </Button>
-        )}
-        
-        {event.eventbriteUrl && (
-          <Button
-            href={event.eventbriteUrl}
-            variant="outline"
-            size="sm"
-          >
-            Register
+            {event.zoomUrl.includes('zoom.us') ? 'Join Zoom' : 
+             event.zoomUrl.includes('meet.google.com') ? 'Join Google Meet' : 
+             'Join Meeting'}
           </Button>
         )}
         

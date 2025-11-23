@@ -164,13 +164,33 @@ export async function syncGoogleCalendarEvents(userId: string, email: string) {
   for (const event of events) {
     if (!event.id || !event.start || !event.end) continue;
 
-    // Extract attendee emails
+    // Extract attendee emails from Google Calendar event
+    // Normalize emails: lowercase and trim to ensure consistent filtering
+    // Time complexity: O(n) where n = number of attendees, Space: O(n) for the array
     const attendeeEmails = (event.attendees || [])
-      .map(attendee => attendee.email?.toLowerCase())
+      .map(attendee => attendee.email?.toLowerCase().trim())
       .filter((email): email is string => !!email);
 
-    // Extract Zoom URL from description or location
-    const zoomUrl = extractZoomUrl(event.description || event.location || '');
+    // Extract meeting URL - prioritize hangoutLink (Google Meet), then Zoom from description
+    // hangoutLink is the Google Meet link if the event has video conferencing
+    let meetingUrl = event.hangoutLink || null;
+    
+    // If no hangoutLink, check for conference data (Google Meet links)
+    if (!meetingUrl && event.conferenceData?.entryPoints) {
+      const meetLink = event.conferenceData.entryPoints.find(
+        (entry: any) => entry.entryPointType === 'video' && entry.uri
+      );
+      if (meetLink) {
+        meetingUrl = meetLink.uri;
+      }
+    }
+    
+    // If still no meeting URL, try extracting from description or location
+    // Check for Google Meet first, then Zoom
+    if (!meetingUrl) {
+      const description = event.description || event.location || '';
+      meetingUrl = extractGoogleMeetUrl(description) || extractZoomUrl(description);
+    }
 
     const eventData = {
       google_event_id: event.id,
@@ -179,22 +199,94 @@ export async function syncGoogleCalendarEvents(userId: string, email: string) {
       start_time: event.start.dateTime || event.start.date,
       end_time: event.end.dateTime || event.end.date,
       organizer_email: event.organizer?.email?.toLowerCase() || email.toLowerCase(),
-      attendees_emails: attendeeEmails,
-      zoom_url: zoomUrl,
+      attendees_emails: attendeeEmails, // Store all attendee emails for filtering
+      zoom_url: meetingUrl, // Store meeting URL (Zoom or Google Meet)
       location: event.location || null,
       updated_at: new Date().toISOString(),
     };
 
     // Upsert event
-    const { error } = await supabase
+    const { data: upsertedEvent, error: upsertError } = await supabase
       .from('events')
       .upsert(eventData, {
         onConflict: 'google_event_id',
-      });
+      })
+      .select()
+      .single();
 
-    if (!error) {
-      syncedEvents.push(eventData);
+    if (upsertError) {
+      console.error(`Error upserting event ${event.id}:`, upsertError);
+      continue;
     }
+
+    if (!upsertedEvent) {
+      console.warn(`Event ${event.id} was not upserted`);
+      continue;
+    }
+
+    // Delete existing user_events mappings for this event
+    // This ensures we don't have stale mappings if attendees changed
+    const { error: deleteError } = await supabase
+      .from('user_events')
+      .delete()
+      .eq('event_id', upsertedEvent.id);
+
+    if (deleteError) {
+      console.warn(`Error deleting old user_events mappings for event ${upsertedEvent.id}:`, deleteError);
+    }
+
+    // Create user_events mappings for each attendee email
+    // Time complexity: O(A) where A = number of attendees per event
+    // Space complexity: O(1) extra per mapping
+    console.log(`[Sync] Processing ${attendeeEmails.length} attendees for event: ${eventData.title}`);
+    
+    let mappingsCreated = 0;
+    for (const attendeeEmail of attendeeEmails) {
+      // Normalize email for lookup (lowercase and trim)
+      const normalizedAttendeeEmail = attendeeEmail.toLowerCase().trim();
+      
+      // Find member with matching email
+      const { data: member, error: memberError } = await supabase
+        .from('members')
+        .select('id, name, email')
+        .eq('email', normalizedAttendeeEmail)
+        .maybeSingle();
+
+      if (memberError) {
+        console.error(`[Sync] Error looking up member for email ${normalizedAttendeeEmail}:`, memberError);
+        continue;
+      }
+
+      // If member exists, create user_events mapping
+      if (member) {
+        console.log(`[Sync] Found member: ${member.name} (${member.email}) -> ${member.id}`);
+        const { error: mappingError } = await supabase
+          .from('user_events')
+          .insert({
+            user_id: member.id,
+            event_id: upsertedEvent.id,
+          });
+
+        if (mappingError) {
+          // Ignore duplicate key errors (shouldn't happen since we delete first, but just in case)
+          if (!mappingError.message.includes('duplicate') && !mappingError.message.includes('unique')) {
+            console.error(`[Sync] Error creating user_events mapping for user ${member.id} and event ${upsertedEvent.id}:`, mappingError);
+          } else {
+            console.log(`[Sync] Mapping already exists for user ${member.id} and event ${upsertedEvent.id}`);
+          }
+        } else {
+          mappingsCreated++;
+          console.log(`[Sync] ✓ Created user_events mapping: user ${member.id} (${member.email}) -> event ${upsertedEvent.id} (${eventData.title})`);
+        }
+      } else {
+        // Member not found - this is okay, they might not be registered yet
+        console.log(`[Sync] ⚠ No member found for attendee email: ${normalizedAttendeeEmail} (event: ${eventData.title})`);
+      }
+    }
+    
+    console.log(`[Sync] Created ${mappingsCreated} mappings for event: ${eventData.title}`);
+
+    syncedEvents.push(eventData);
   }
 
   return {
@@ -213,46 +305,71 @@ function extractZoomUrl(text: string): string | null {
 }
 
 /**
- * Get events for a specific user (filtered by their email)
+ * Extract Google Meet URL from text
  */
-export async function getUserEvents(userEmail: string) {
+function extractGoogleMeetUrl(text: string): string | null {
+  const meetPattern = /https?:\/\/meet\.google\.com\/[a-z-]+/i;
+  const match = text.match(meetPattern);
+  return match ? match[0] : null;
+}
+
+/**
+ * Get events for a specific user (using user_events join table)
+ * This uses the explicit join table instead of filtering by email arrays
+ * Time complexity: O(k) where k = number of events mapped to that user
+ * Space complexity: O(k) to hold the list of events
+ */
+export async function getUserEvents(userId: string) {
   const supabase = getSupabase();
   
-  const normalizedEmail = userEmail.toLowerCase().trim();
+  console.log(`[getUserEvents] Querying events for userId: ${userId} (type: ${typeof userId})`);
   
-  // Query events where the user's email is in the attendees_emails array
-  // Using PostgreSQL array contains operator: attendees_emails @> ARRAY[email]
-  const { data, error } = await supabase
-    .from('events')
-    .select('*')
-    .contains('attendees_emails', [normalizedEmail])
-    .gte('start_time', new Date().toISOString())
-    .order('start_time', { ascending: true });
+  // Query user_events join table to get event IDs for this user
+  const { data: userEventMappings, error: mappingError } = await supabase
+    .from('user_events')
+    .select('event_id')
+    .eq('user_id', userId);
 
-  if (error) {
-    // If contains doesn't work, try using cs (contains) filter
-    console.warn('First query failed, trying alternative:', error.message);
-    
-    // Alternative approach: filter in JavaScript if Supabase query fails
-    const { data: allEvents, error: fetchError } = await supabase
-      .from('events')
-      .select('*')
-      .gte('start_time', new Date().toISOString())
-      .order('start_time', { ascending: true });
-    
-    if (fetchError) {
-      throw new Error(`Failed to fetch events: ${fetchError.message}`);
-    }
-    
-    // Filter events where user's email is in attendees_emails array
-    const filteredEvents = (allEvents || []).filter((event: any) => {
-      const attendees = event.attendees_emails || [];
-      return Array.isArray(attendees) && attendees.includes(normalizedEmail);
-    });
-    
-    return filteredEvents;
+  if (mappingError) {
+    console.error(`[getUserEvents] Error fetching mappings:`, mappingError);
+    throw new Error(`Failed to fetch user event mappings: ${mappingError.message}`);
   }
 
-  return data || [];
+  console.log(`[getUserEvents] Found ${userEventMappings?.length || 0} mappings for user ${userId}`);
+  
+  if (!userEventMappings || userEventMappings.length === 0) {
+    console.log(`[getUserEvents] No event mappings found for user ${userId}`);
+    // Debug: Check if user_events table has any data at all
+    const { data: allMappings } = await supabase
+      .from('user_events')
+      .select('user_id, event_id')
+      .limit(5);
+    console.log(`[getUserEvents] Sample mappings in table:`, allMappings);
+    return [];
+  }
+
+  // Extract event IDs
+  const eventIds = userEventMappings.map((mapping: any) => mapping.event_id);
+  console.log(`[getUserEvents] Event IDs to fetch:`, eventIds);
+
+  // Query events for those IDs
+  // Show all events (both past and future) - members should see all events they were invited to
+  // Events will be categorized on the frontend into Today/Upcoming/Past
+  const { data: events, error: eventsError } = await supabase
+    .from('events')
+    .select('*')
+    .in('id', eventIds)
+    .order('start_time', { ascending: true }); // Order by start time ascending (past first, then future)
+
+  if (eventsError) {
+    console.error(`[getUserEvents] Error fetching events:`, eventsError);
+    throw new Error(`Failed to fetch events: ${eventsError.message}`);
+  }
+
+  console.log(`[getUserEvents] Found ${events?.length || 0} events for user ${userId}`);
+  if (events && events.length > 0) {
+    console.log(`[getUserEvents] Event titles:`, events.map((e: any) => e.title));
+  }
+  return events || [];
 }
 
