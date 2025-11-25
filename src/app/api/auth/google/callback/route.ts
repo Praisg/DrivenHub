@@ -18,13 +18,13 @@ export async function GET(req: NextRequest) {
 
   if (error) {
     return NextResponse.redirect(
-      new URL(`/admin/dashboard?error=${encodeURIComponent(error)}`, baseUrl)
+      new URL(`/admin/events?error=${encodeURIComponent(error)}`, baseUrl)
     );
   }
 
   if (!code || !state) {
     return NextResponse.redirect(
-      new URL('/admin/dashboard?error=missing_code_or_state', baseUrl)
+      new URL('/admin/events?error=missing_code_or_state', baseUrl)
     );
   }
 
@@ -50,14 +50,14 @@ export async function GET(req: NextRequest) {
     // Store tokens in database
     await storeOAuthTokens(userId, googleEmail, tokens);
 
-    // Redirect to admin home with success message
+    // Redirect to admin events page with success message (where sync component is)
     return NextResponse.redirect(
-      new URL('/admin/home?success=google_connected', baseUrl)
+      new URL('/admin/events?success=google_connected', baseUrl)
     );
   } catch (err: any) {
     console.error('OAuth callback error:', err);
     return NextResponse.redirect(
-      new URL(`/admin/home?error=${encodeURIComponent(err.message)}`, baseUrl)
+      new URL(`/admin/events?error=${encodeURIComponent(err.message)}`, baseUrl)
     );
   }
 }
