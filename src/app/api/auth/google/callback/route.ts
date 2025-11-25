@@ -61,9 +61,18 @@ export async function GET(req: NextRequest) {
       new URL('/admin/events?success=google_connected', baseUrl)
     );
   } catch (err: any) {
-    console.error('OAuth callback error:', err);
+    // Enhanced error logging for Heroku
+    console.error('OAuth callback error:', {
+      message: err.message,
+      code: err.code,
+      response: err.response?.data,
+      stack: err.stack,
+      fullError: JSON.stringify(err, Object.getOwnPropertyNames(err)),
+    });
+    
+    const errorMessage = err.message || 'Unknown error occurred';
     return NextResponse.redirect(
-      new URL(`/admin/events?error=${encodeURIComponent(err.message)}`, baseUrl)
+      new URL(`/admin/events?error=${encodeURIComponent(errorMessage)}`, baseUrl)
     );
   }
 }

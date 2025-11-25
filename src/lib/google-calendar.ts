@@ -54,11 +54,14 @@ export async function exchangeCodeForTokens(code: string) {
     const { tokens } = await oauth2Client.getToken(code);
     return tokens;
   } catch (error: any) {
+    // Enhanced error logging for Heroku
     console.error('Token exchange error:', {
       message: error.message,
       code: error.code,
+      response: error.response?.data,
       redirectUri: redirectUri,
       clientId: process.env.GOOGLE_CLIENT_ID ? `${process.env.GOOGLE_CLIENT_ID.substring(0, 20)}...` : 'NOT SET',
+      fullError: JSON.stringify(error, Object.getOwnPropertyNames(error)),
     });
     throw error;
   }
