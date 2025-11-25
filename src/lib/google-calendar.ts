@@ -1,10 +1,24 @@
 import { google } from 'googleapis';
 import { getSupabase } from './supabase';
 
+// Construct redirect URI
+const redirectUri = process.env.GOOGLE_REDIRECT_URI || 
+  `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/auth/google/callback`;
+
+// Debug logging (remove in production if needed)
+if (process.env.NODE_ENV !== 'production') {
+  console.log('Google OAuth Config:', {
+    clientId: process.env.GOOGLE_CLIENT_ID ? `${process.env.GOOGLE_CLIENT_ID.substring(0, 20)}...` : 'NOT SET',
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET ? 'SET' : 'NOT SET',
+    redirectUri: redirectUri,
+    appUrl: process.env.NEXT_PUBLIC_APP_URL || 'NOT SET',
+  });
+}
+
 const oauth2Client = new google.auth.OAuth2(
   process.env.GOOGLE_CLIENT_ID,
   process.env.GOOGLE_CLIENT_SECRET,
-  process.env.GOOGLE_REDIRECT_URI || `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/auth/google/callback`
+  redirectUri
 );
 
 /**

@@ -21,6 +21,13 @@ export async function GET(req: NextRequest) {
   const state = JSON.stringify({ userId, email });
   const authUrl = getGoogleAuthUrl(state);
 
+  // Debug logging to verify redirect URI
+  console.log('Google OAuth Initiation:', {
+    redirectUri: process.env.GOOGLE_REDIRECT_URI || `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/auth/google/callback`,
+    clientId: process.env.GOOGLE_CLIENT_ID ? `${process.env.GOOGLE_CLIENT_ID.substring(0, 20)}...` : 'NOT SET',
+    authUrl: authUrl.substring(0, 100) + '...',
+  });
+
   return NextResponse.json({ authUrl });
 }
 
