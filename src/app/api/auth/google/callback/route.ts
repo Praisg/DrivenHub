@@ -12,15 +12,19 @@ export async function GET(req: NextRequest) {
   const state = searchParams.get('state');
   const error = searchParams.get('error');
 
+  // Get base URL from environment or use request origin
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 
+    `${req.nextUrl.protocol}//${req.nextUrl.host}`;
+
   if (error) {
     return NextResponse.redirect(
-      new URL(`/admin/dashboard?error=${encodeURIComponent(error)}`, req.url)
+      new URL(`/admin/dashboard?error=${encodeURIComponent(error)}`, baseUrl)
     );
   }
 
   if (!code || !state) {
     return NextResponse.redirect(
-      new URL('/admin/dashboard?error=missing_code_or_state', req.url)
+      new URL('/admin/dashboard?error=missing_code_or_state', baseUrl)
     );
   }
 
@@ -48,12 +52,12 @@ export async function GET(req: NextRequest) {
 
     // Redirect to admin home with success message
     return NextResponse.redirect(
-      new URL('/admin/home?success=google_connected', req.url)
+      new URL('/admin/home?success=google_connected', baseUrl)
     );
   } catch (err: any) {
     console.error('OAuth callback error:', err);
     return NextResponse.redirect(
-      new URL(`/admin/home?error=${encodeURIComponent(err.message)}`, req.url)
+      new URL(`/admin/home?error=${encodeURIComponent(err.message)}`, baseUrl)
     );
   }
 }
