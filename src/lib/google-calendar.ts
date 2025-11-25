@@ -44,8 +44,24 @@ export function getGoogleAuthUrl(state?: string): string {
  * Exchange authorization code for tokens
  */
 export async function exchangeCodeForTokens(code: string) {
-  const { tokens } = await oauth2Client.getToken(code);
-  return tokens;
+  try {
+    console.log('Exchanging code for tokens:', {
+      redirectUri: redirectUri,
+      clientId: process.env.GOOGLE_CLIENT_ID ? `${process.env.GOOGLE_CLIENT_ID.substring(0, 20)}...` : 'NOT SET',
+      hasCode: !!code,
+    });
+    
+    const { tokens } = await oauth2Client.getToken(code);
+    return tokens;
+  } catch (error: any) {
+    console.error('Token exchange error:', {
+      message: error.message,
+      code: error.code,
+      redirectUri: redirectUri,
+      clientId: process.env.GOOGLE_CLIENT_ID ? `${process.env.GOOGLE_CLIENT_ID.substring(0, 20)}...` : 'NOT SET',
+    });
+    throw error;
+  }
 }
 
 /**

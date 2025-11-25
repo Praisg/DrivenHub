@@ -32,6 +32,12 @@ export async function GET(req: NextRequest) {
     // Parse state to get userId and email
     const { userId, email } = JSON.parse(state);
 
+    console.log('OAuth callback received:', {
+      hasCode: !!code,
+      hasState: !!state,
+      redirectUri: process.env.GOOGLE_REDIRECT_URI || `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/auth/google/callback`,
+    });
+
     // Exchange code for tokens
     const tokens = await exchangeCodeForTokens(code);
     
