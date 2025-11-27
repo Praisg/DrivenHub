@@ -14,7 +14,7 @@ function createOAuthClient() {
   // Always log in production to debug Heroku issues
   console.log('Creating OAuth client with:', {
     clientId: process.env.GOOGLE_CLIENT_ID ? `${process.env.GOOGLE_CLIENT_ID.substring(0, 20)}...` : 'NOT SET',
-    clientSecret: process.env.GOOGLE_CLIENT_SECRET ? 'SET' : 'NOT SET',
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET ? `SET (length: ${process.env.GOOGLE_CLIENT_SECRET.length}, starts with: ${process.env.GOOGLE_CLIENT_SECRET.substring(0, 6)}...)` : 'NOT SET',
     redirectUri: redirectUri,
     appUrl: process.env.NEXT_PUBLIC_APP_URL || 'NOT SET',
     nodeEnv: process.env.NODE_ENV,
