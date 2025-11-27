@@ -19,19 +19,28 @@ export async function GET(req: NextRequest) {
     }
 
     // Transform to match Event interface
-    const transformedEvents = (data || []).map((event: any) => ({
-      id: event.id,
-      googleEventId: event.google_event_id,
-      title: event.title,
-      startISO: event.start_time,
-      endISO: event.end_time,
-      zoomUrl: event.zoom_url,
-      eventbriteUrl: event.eventbrite_url,
-      description: event.description || '',
-      organizerEmail: event.organizer_email,
-      attendeesEmails: event.attendees_emails || [],
-      location: event.location,
-    }));
+    const transformedEvents = (data || [])
+      .map((event: any) => ({
+        id: event.id,
+        googleEventId: event.google_event_id,
+        title: event.title || 'Untitled Event',
+        startISO: event.start_time || null,
+        endISO: event.end_time || null,
+        zoomUrl: event.zoom_url || null,
+        eventbriteUrl: event.eventbrite_url || null,
+        description: event.description || '',
+        organizerEmail: event.organizer_email || null,
+        attendeesEmails: Array.isArray(event.attendees_emails) ? event.attendees_emails : [],
+        location: event.location || null,
+      }))
+      .filter((event: any) => {
+        // Filter out events with missing critical fields
+        if (!event.id || !event.title) {
+          console.warn('Skipping event with missing id or title:', event);
+          return false;
+        }
+        return true;
+      });
 
     return NextResponse.json({ events: transformedEvents });
   } catch (err: any) {

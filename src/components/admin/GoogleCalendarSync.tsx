@@ -114,9 +114,12 @@ export default function GoogleCalendarSync({ onSyncComplete }: GoogleCalendarSyn
       setSyncResult({ synced: data.synced, total: data.total });
       setSuccess(`Successfully synced ${data.synced} events from Google Calendar!`);
       
-      // Call onSyncComplete to refresh the events list
+      // Call onSyncComplete to refresh the events list after a short delay
+      // to ensure database changes are committed
       if (onSyncComplete) {
-        onSyncComplete();
+        setTimeout(() => {
+          onSyncComplete();
+        }, 500);
       }
     } catch (err: any) {
       const errorMsg = err.message || 'Failed to sync events';
