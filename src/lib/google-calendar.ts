@@ -1,57 +1,78 @@
 import { google } from 'googleapis';
 import { getSupabase } from './supabase';
 
-// Construct redirect URI
-const redirectUri = process.env.GOOGLE_REDIRECT_URI || 
-  `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/auth/google/callback`;
+// Construct redirect URI dynamically
+function getRedirectUri() {
+  return process.env.GOOGLE_REDIRECT_URI || 
+    `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/auth/google/callback`;
+}
 
-// Debug logging (remove in production if needed)
-if (process.env.NODE_ENV !== 'production') {
-  console.log('Google OAuth Config:', {
+// Create OAuth client factory function to ensure fresh values
+function createOAuthClient() {
+  const redirectUri = getRedirectUri();
+  
+  // Always log in production to debug Heroku issues
+  console.log('Creating OAuth client with:', {
     clientId: process.env.GOOGLE_CLIENT_ID ? `${process.env.GOOGLE_CLIENT_ID.substring(0, 20)}...` : 'NOT SET',
     clientSecret: process.env.GOOGLE_CLIENT_SECRET ? 'SET' : 'NOT SET',
     redirectUri: redirectUri,
     appUrl: process.env.NEXT_PUBLIC_APP_URL || 'NOT SET',
+    nodeEnv: process.env.NODE_ENV,
   });
+
+  return new google.auth.OAuth2(
+    process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_CLIENT_SECRET,
+    redirectUri
+  );
 }
 
-const oauth2Client = new google.auth.OAuth2(
-  process.env.GOOGLE_CLIENT_ID,
-  process.env.GOOGLE_CLIENT_SECRET,
-  redirectUri
-);
+// Create initial OAuth client (will be recreated if env vars change)
+let oauth2Client = createOAuthClient();
 
 /**
  * Get Google OAuth authorization URL
  */
 export function getGoogleAuthUrl(state?: string): string {
+  // Recreate client to ensure we have latest env vars
+  const client = createOAuthClient();
+  
   const scopes = [
     'https://www.googleapis.com/auth/calendar.readonly',
     'https://www.googleapis.com/auth/userinfo.email',
     'https://www.googleapis.com/auth/userinfo.profile',
   ];
 
-  return oauth2Client.generateAuthUrl({
+  const authUrl = client.generateAuthUrl({
     access_type: 'offline',
     scope: scopes,
     prompt: 'consent', // Force consent to get refresh token
     state: state,
     include_granted_scopes: true, // Include previously granted scopes
   });
+
+  console.log('Generated auth URL with redirect URI:', getRedirectUri());
+  
+  return authUrl;
 }
 
 /**
  * Exchange authorization code for tokens
  */
 export async function exchangeCodeForTokens(code: string) {
+  // Recreate client to ensure we have latest env vars
+  const client = createOAuthClient();
+  const redirectUri = getRedirectUri();
+  
   try {
     console.log('Exchanging code for tokens:', {
       redirectUri: redirectUri,
       clientId: process.env.GOOGLE_CLIENT_ID ? `${process.env.GOOGLE_CLIENT_ID.substring(0, 20)}...` : 'NOT SET',
+      hasClientSecret: !!process.env.GOOGLE_CLIENT_SECRET,
       hasCode: !!code,
     });
     
-    const { tokens } = await oauth2Client.getToken(code);
+    const { tokens } = await client.getToken(code);
     return tokens;
   } catch (error: any) {
     // Enhanced error logging for Heroku
@@ -59,8 +80,9 @@ export async function exchangeCodeForTokens(code: string) {
       message: error.message,
       code: error.code,
       response: error.response?.data,
-      redirectUri: redirectUri,
+      redirectUri: getRedirectUri(),
       clientId: process.env.GOOGLE_CLIENT_ID ? `${process.env.GOOGLE_CLIENT_ID.substring(0, 20)}...` : 'NOT SET',
+      hasClientSecret: !!process.env.GOOGLE_CLIENT_SECRET,
       fullError: JSON.stringify(error, Object.getOwnPropertyNames(error)),
     });
     throw error;
