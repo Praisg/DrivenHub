@@ -37,12 +37,16 @@ export async function POST(req: NextRequest) {
     const result = await syncGoogleCalendarEvents(userId, email);
     console.log('[API] Sync completed successfully:', result);
 
-    return NextResponse.json({
-      success: true,
-      synced: result.synced,
-      total: result.total,
-      message: `Successfully synced ${result.synced} events from Google Calendar`,
-    });
+    // Explicitly return 200 status with clear success response
+    return NextResponse.json(
+      {
+        success: true,
+        synced: result.synced,
+        total: result.total,
+        message: `Successfully synced ${result.synced} events from Google Calendar`,
+      },
+      { status: 200 }
+    );
   } catch (err: any) {
     console.error('[API] Sync error:', {
       message: err.message,
@@ -52,7 +56,10 @@ export async function POST(req: NextRequest) {
       fullError: JSON.stringify(err, Object.getOwnPropertyNames(err)),
     });
     return NextResponse.json(
-      { error: err.message || 'Failed to sync events' },
+      {
+        success: false,
+        error: err.message || 'Failed to sync events',
+      },
       { status: 500 }
     );
   }

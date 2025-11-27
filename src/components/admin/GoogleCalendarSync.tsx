@@ -96,8 +96,9 @@ export default function GoogleCalendarSync({ onSyncComplete }: GoogleCalendarSyn
         }),
       });
 
-      // Check if response is ok before parsing
+      // Check HTTP status first
       if (!response.ok) {
+        // Non-2xx status - this is a real error
         let errorMsg = 'Failed to sync events';
         try {
           const errorData = await response.json();
@@ -117,70 +118,15 @@ export default function GoogleCalendarSync({ onSyncComplete }: GoogleCalendarSyn
         return;
       }
 
-      // Parse response JSON safely
+      // Response is OK (200-299) - parse JSON
       let data;
       try {
-        const text = await response.text();
-        if (!text) {
-          throw new Error('Empty response from server');
-        }
-        data = JSON.parse(text);
+        data = await response.json();
       } catch (parseError: any) {
-        console.error('Failed to parse sync response:', parseError);
-        throw new Error(`Failed to parse server response: ${parseError.message}`);
-      }
-
-      // Validate response structure
-      if (typeof data !== 'object' || data === null) {
-        throw new Error('Invalid response format from server');
-      }
-
-      // Extract synced and total values safely
-      const synced = typeof data.synced === 'number' ? data.synced : 0;
-      const total = typeof data.total === 'number' ? data.total : 0;
-
-      // Only set success if we have valid data and success is not explicitly false
-      if (data.success !== false && response.ok) {
-        console.log('[Sync UI] Sync successful:', { synced, total });
-        setSyncResult({ synced, total });
-        setSuccess(`Successfully synced ${synced} of ${total} events from Google Calendar!`);
-        setError(null); // Explicitly clear any previous errors
-        
-        // Call onSyncComplete to refresh the events list after a delay
-        // to ensure database changes are committed (longer delay for Heroku)
-        if (onSyncComplete) {
-          setTimeout(() => {
-            console.log('[Sync UI] Triggering events list refresh...');
-            onSyncComplete();
-          }, 2000); // Increased to 2 seconds to allow database commits
-        }
-      } else {
-        // If success is explicitly false, treat as error
-        const errorMsg = data.error || data.message || 'Sync completed but reported failure';
-        console.error('[Sync UI] Sync reported failure:', errorMsg);
-        setError(errorMsg);
-      }
-    } catch (err: any) {
-      console.error('[Sync UI] Sync error caught:', {
-        message: err.message,
-        name: err.name,
-        stack: err.stack,
-        fullError: err,
-      });
-      
-      const errorMsg = err.message || 'Failed to sync events';
-      
-      // Filter out validation/parsing errors that might be false positives
-      // These errors often occur when the response is actually successful but parsing fails
-      const isValidationError = errorMsg.includes('string did not match') || 
-                                 errorMsg.includes('expected pattern') ||
-                                 errorMsg.includes('Invalid') ||
-                                 errorMsg.includes('Unexpected token');
-      
-      if (isValidationError) {
-        // If it's a validation error, the sync might have actually succeeded
-        // Try refreshing the events list anyway
-        console.warn('[Sync UI] Validation error detected, but sync may have succeeded. Attempting refresh...');
+        console.error('[Sync UI] Failed to parse JSON response:', parseError);
+        // If parsing fails but status was OK, sync might have succeeded
+        // Try refreshing anyway
+        console.warn('[Sync UI] JSON parse failed but status was OK. Attempting refresh...');
         setSuccess('Sync completed. Refreshing events list...');
         setError(null);
         if (onSyncComplete) {
@@ -188,11 +134,66 @@ export default function GoogleCalendarSync({ onSyncComplete }: GoogleCalendarSyn
             onSyncComplete();
           }, 2000);
         }
+        return;
+      }
+
+      // Validate response structure
+      if (typeof data !== 'object' || data === null) {
+        console.error('[Sync UI] Invalid response format:', data);
+        throw new Error('Invalid response format from server');
+      }
+
+      // Check if sync was successful
+      if (data.success === false || data.error) {
+        // Explicit failure from server
+        const errorMsg = data.error || 'Sync failed';
+        console.error('[Sync UI] Sync reported failure:', errorMsg);
+        setError(errorMsg);
+        return;
+      }
+
+      // Success case - extract synced and total
+      const synced = typeof data.synced === 'number' ? data.synced : 0;
+      const total = typeof data.total === 'number' ? data.total : 0;
+
+      console.log('[Sync UI] Sync successful:', { synced, total, data });
+      
+      // Set success state
+      setSyncResult({ synced, total });
+      setSuccess(`Successfully synced ${synced} of ${total} events from Google Calendar!`);
+      setError(null); // Explicitly clear any previous errors
+      
+      // Refresh the events list after a delay to ensure database commits
+      if (onSyncComplete) {
+        setTimeout(() => {
+          console.log('[Sync UI] Triggering events list refresh...');
+          onSyncComplete();
+        }, 2000);
+      }
+    } catch (err: any) {
+      // This catch block handles network errors (fetch throws) or other exceptions
+      console.error('[Sync UI] Sync error caught:', {
+        message: err.message,
+        name: err.name,
+        stack: err.stack,
+      });
+      
+      const errorMsg = err.message || 'Failed to sync events';
+      
+      // Distinguish between network errors and other errors
+      const isNetworkError = err.name === 'TypeError' && 
+                            (errorMsg.includes('fetch') || 
+                             errorMsg.includes('network') ||
+                             errorMsg.includes('Failed to fetch'));
+      
+      if (isNetworkError) {
+        // Network error - server might be unreachable
+        setError('Unable to reach server. Please check your connection and try again.');
       } else if (errorMsg.includes('Insufficient') || errorMsg.includes('permissions') || errorMsg.includes('scopes')) {
         setIsConnected(false);
         setError(`${errorMsg} Please disconnect and reconnect your Google account.`);
       } else {
-        // Real error - show it
+        // Other error - show the message
         setError(errorMsg);
       }
     } finally {
