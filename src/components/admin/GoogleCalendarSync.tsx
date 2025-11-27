@@ -4,7 +4,11 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components';
 import { getCurrentUser } from '@/lib/auth';
 
-export default function GoogleCalendarSync() {
+interface GoogleCalendarSyncProps {
+  onSyncComplete?: () => void;
+}
+
+export default function GoogleCalendarSync({ onSyncComplete }: GoogleCalendarSyncProps) {
   const [isConnected, setIsConnected] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<{ synced: number; total: number } | null>(null);
@@ -109,6 +113,11 @@ export default function GoogleCalendarSync() {
       const data = await response.json();
       setSyncResult({ synced: data.synced, total: data.total });
       setSuccess(`Successfully synced ${data.synced} events from Google Calendar!`);
+      
+      // Call onSyncComplete to refresh the events list
+      if (onSyncComplete) {
+        onSyncComplete();
+      }
     } catch (err: any) {
       const errorMsg = err.message || 'Failed to sync events';
       if (errorMsg.includes('Insufficient') || errorMsg.includes('permissions') || errorMsg.includes('scopes')) {

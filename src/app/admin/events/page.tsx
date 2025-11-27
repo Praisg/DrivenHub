@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import AdminLayout from '@/components/layouts/AdminLayout';
 import GoogleCalendarSync from '@/components/admin/GoogleCalendarSync';
 import { getCurrentUser } from '@/lib/auth';
@@ -11,24 +11,24 @@ export default function AdminEventsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const user = getCurrentUser();
 
-  useEffect(() => {
-    const fetchAllEvents = async () => {
-      try {
-        // Fetch all events (admin can see all)
-        const response = await fetch('/api/admin/events');
-        if (response.ok) {
-          const data = await response.json();
-          setAllEvents(data.events || []);
-        }
-      } catch (error) {
-        console.error('Error fetching events:', error);
-      } finally {
-        setIsLoading(false);
+  const fetchAllEvents = useCallback(async () => {
+    try {
+      // Fetch all events (admin can see all)
+      const response = await fetch('/api/admin/events');
+      if (response.ok) {
+        const data = await response.json();
+        setAllEvents(data.events || []);
       }
-    };
-
-    fetchAllEvents();
+    } catch (error) {
+      console.error('Error fetching events:', error);
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchAllEvents();
+  }, [fetchAllEvents]);
 
   return (
     <AdminLayout>
@@ -40,7 +40,7 @@ export default function AdminEventsPage() {
 
         {/* Google Calendar Sync */}
         <div className="mb-8">
-          <GoogleCalendarSync />
+          <GoogleCalendarSync onSyncComplete={fetchAllEvents} />
         </div>
 
         {/* All Events List */}
