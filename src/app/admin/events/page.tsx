@@ -9,12 +9,17 @@ import { getSupabase } from '@/lib/supabase';
 export default function AdminEventsPage() {
   const [allEvents, setAllEvents] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const user = getCurrentUser();
 
-  const fetchAllEvents = useCallback(async () => {
+  const fetchAllEvents = useCallback(async (retryCount = 0, isPostSync = false) => {
     try {
-      setIsLoading(true);
+      if (isPostSync) {
+        setIsRefreshing(true);
+      } else {
+        setIsLoading(true);
+      }
       setError(null);
       // Fetch all events (admin can see all)
       const response = await fetch('/api/admin/events');
@@ -38,12 +43,20 @@ export default function AdminEventsPage() {
         return true;
       });
       setAllEvents(validEvents);
+      setError(null); // Clear any previous errors on success
     } catch (error: any) {
       console.error('Error fetching events:', error);
+      // Retry logic: if this is a retry after sync and we get an error, retry once more
+      if (retryCount < 2 && (isPostSync || error.message?.includes('Failed to fetch'))) {
+        console.log(`Retrying fetch (attempt ${retryCount + 1}/2)...`);
+        await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1))); // Exponential backoff
+        return fetchAllEvents(retryCount + 1, isPostSync);
+      }
       setError(error.message || 'Failed to fetch events');
       setAllEvents([]);
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
     }
   }, []);
 
@@ -61,7 +74,7 @@ export default function AdminEventsPage() {
 
         {/* Google Calendar Sync */}
         <div className="mb-8">
-          <GoogleCalendarSync onSyncComplete={fetchAllEvents} />
+          <GoogleCalendarSync onSyncComplete={() => fetchAllEvents(0, true)} />
         </div>
 
         {/* All Events List */}
@@ -71,6 +84,12 @@ export default function AdminEventsPage() {
           {error && (
             <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
               <p className="text-red-800 text-sm">{error}</p>
+            </div>
+          )}
+          
+          {isRefreshing && (
+            <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-blue-800 text-sm">Refreshing events list...</p>
             </div>
           )}
           

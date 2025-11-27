@@ -112,14 +112,14 @@ export default function GoogleCalendarSync({ onSyncComplete }: GoogleCalendarSyn
 
       const data = await response.json();
       setSyncResult({ synced: data.synced, total: data.total });
-      setSuccess(`Successfully synced ${data.synced} events from Google Calendar!`);
+      setSuccess(`Successfully synced ${data.synced} events from Google Calendar! Refreshing events list...`);
       
-      // Call onSyncComplete to refresh the events list after a short delay
-      // to ensure database changes are committed
+      // Call onSyncComplete to refresh the events list after a delay
+      // to ensure database changes are committed (longer delay for Heroku)
       if (onSyncComplete) {
         setTimeout(() => {
           onSyncComplete();
-        }, 500);
+        }, 2000); // Increased to 2 seconds to allow database commits
       }
     } catch (err: any) {
       const errorMsg = err.message || 'Failed to sync events';
