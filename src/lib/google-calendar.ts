@@ -195,6 +195,8 @@ export async function syncGoogleCalendarEvents(userId: string, email: string) {
 
   let response;
   try {
+    // Request attendees explicitly with maxAttendees and alwaysIncludeEmail
+    // This ensures we get attendee emails even for events with many attendees
     response = await calendar.events.list({
       calendarId: 'primary',
       timeMin: now.toISOString(),
@@ -202,6 +204,8 @@ export async function syncGoogleCalendarEvents(userId: string, email: string) {
       maxResults: 2500,
       singleEvents: true,
       orderBy: 'startTime',
+      maxAttendees: 100, // Include up to 100 attendees per event
+      alwaysIncludeEmail: true, // Always include email addresses for attendees
     });
   } catch (error: any) {
     // Check for insufficient scopes error
@@ -222,9 +226,23 @@ export async function syncGoogleCalendarEvents(userId: string, email: string) {
     // Extract attendee emails from Google Calendar event
     // Normalize emails: lowercase and trim to ensure consistent filtering
     // Time complexity: O(n) where n = number of attendees, Space: O(n) for the array
-    const attendeeEmails = (event.attendees || [])
-      .map(attendee => attendee.email?.toLowerCase().trim())
+    
+    // Debug: Log raw attendees data from Google
+    const rawAttendees = event.attendees || [];
+    if (rawAttendees.length > 0) {
+      console.log(`[Sync] Raw attendees for "${event.summary || 'Untitled'}":`, 
+        rawAttendees.map((a: any) => ({ email: a.email, responseStatus: a.responseStatus })).slice(0, 5)
+      );
+    }
+    
+    const attendeeEmails = rawAttendees
+      .map((attendee: any) => attendee.email?.toLowerCase().trim())
       .filter((email): email is string => !!email);
+    
+    // Log if we got attendees from Google but extracted 0 emails
+    if (rawAttendees.length > 0 && attendeeEmails.length === 0) {
+      console.warn(`[Sync] ⚠ Event "${event.summary || 'Untitled'}" has ${rawAttendees.length} attendees but 0 valid emails extracted`);
+    }
 
     // Extract meeting URL - prioritize hangoutLink (Google Meet), then Zoom from description
     // hangoutLink is the Google Meet link if the event has video conferencing
@@ -235,7 +253,7 @@ export async function syncGoogleCalendarEvents(userId: string, email: string) {
       const meetLink = event.conferenceData.entryPoints.find(
         (entry: any) => entry.entryPointType === 'video' && entry.uri
       );
-      if (meetLink) {
+      if (meetLink?.uri) {
         meetingUrl = meetLink.uri;
       }
     }
@@ -293,7 +311,13 @@ export async function syncGoogleCalendarEvents(userId: string, email: string) {
     // Create user_events mappings for each attendee email
     // Time complexity: O(A) where A = number of attendees per event
     // Space complexity: O(1) extra per mapping
-    console.log(`[Sync] Processing ${attendeeEmails.length} attendees for event: ${eventData.title}`);
+    
+    if (attendeeEmails.length === 0) {
+      // Event has no attendees - still sync the event, but skip mapping
+      console.log(`[Sync] Event has 0 attendees in API: ${eventData.title} (still syncing event)`);
+    } else {
+      console.log(`[Sync] Processing ${attendeeEmails.length} attendees for event: ${eventData.title}`);
+    }
     
     let mappingsCreated = 0;
     for (const attendeeEmail of attendeeEmails) {
@@ -339,7 +363,9 @@ export async function syncGoogleCalendarEvents(userId: string, email: string) {
       }
     }
     
-    console.log(`[Sync] Created ${mappingsCreated} mappings for event: ${eventData.title}`);
+    if (attendeeEmails.length > 0) {
+      console.log(`[Sync] Created ${mappingsCreated} mappings for event: ${eventData.title} (${attendeeEmails.length} attendees, ${mappingsCreated} matched members)`);
+    }
 
     syncedEvents.push(eventData);
   }
