@@ -6,6 +6,16 @@ import GoogleCalendarSync from '@/components/admin/GoogleCalendarSync';
 import { getCurrentUser } from '@/lib/auth';
 import { getSupabase } from '@/lib/supabase';
 
+// Helper function to validate URLs
+function isValidUrl(url: string): boolean {
+  try {
+    new URL(url);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export default function AdminEventsPage() {
   const [allEvents, setAllEvents] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -131,7 +141,7 @@ export default function AdminEventsPage() {
                               {event.attendeesEmails.length > 3 && ` +${event.attendeesEmails.length - 3} more`}
                             </p>
                           )}
-                          {event.zoomUrl && (
+                          {event.zoomUrl && isValidUrl(event.zoomUrl) && (
                             <p className="mt-1">
                               <a href={event.zoomUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
                                 Join Meeting

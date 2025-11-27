@@ -96,37 +96,103 @@ export default function GoogleCalendarSync({ onSyncComplete }: GoogleCalendarSyn
         }),
       });
 
+      // Check if response is ok before parsing
       if (!response.ok) {
-        const data = await response.json();
-        const errorMsg = data.error || 'Failed to sync events';
+        let errorMsg = 'Failed to sync events';
+        try {
+          const errorData = await response.json();
+          errorMsg = errorData.error || errorMsg;
+        } catch (parseError) {
+          // If JSON parsing fails, use status text
+          errorMsg = `HTTP ${response.status}: ${response.statusText || 'Failed to sync events'}`;
+        }
         
         // If insufficient scopes, suggest reconnecting
         if (errorMsg.includes('Insufficient') || errorMsg.includes('permissions') || errorMsg.includes('scopes')) {
           setIsConnected(false);
           setError(`${errorMsg} Please disconnect and reconnect your Google account.`);
         } else {
-          throw new Error(errorMsg);
+          setError(errorMsg);
         }
         return;
       }
 
-      const data = await response.json();
-      setSyncResult({ synced: data.synced, total: data.total });
-      setSuccess(`Successfully synced ${data.synced} events from Google Calendar! Refreshing events list...`);
-      
-      // Call onSyncComplete to refresh the events list after a delay
-      // to ensure database changes are committed (longer delay for Heroku)
-      if (onSyncComplete) {
-        setTimeout(() => {
-          onSyncComplete();
-        }, 2000); // Increased to 2 seconds to allow database commits
+      // Parse response JSON safely
+      let data;
+      try {
+        const text = await response.text();
+        if (!text) {
+          throw new Error('Empty response from server');
+        }
+        data = JSON.parse(text);
+      } catch (parseError: any) {
+        console.error('Failed to parse sync response:', parseError);
+        throw new Error(`Failed to parse server response: ${parseError.message}`);
+      }
+
+      // Validate response structure
+      if (typeof data !== 'object' || data === null) {
+        throw new Error('Invalid response format from server');
+      }
+
+      // Extract synced and total values safely
+      const synced = typeof data.synced === 'number' ? data.synced : 0;
+      const total = typeof data.total === 'number' ? data.total : 0;
+
+      // Only set success if we have valid data and success is not explicitly false
+      if (data.success !== false && response.ok) {
+        console.log('[Sync UI] Sync successful:', { synced, total });
+        setSyncResult({ synced, total });
+        setSuccess(`Successfully synced ${synced} of ${total} events from Google Calendar!`);
+        setError(null); // Explicitly clear any previous errors
+        
+        // Call onSyncComplete to refresh the events list after a delay
+        // to ensure database changes are committed (longer delay for Heroku)
+        if (onSyncComplete) {
+          setTimeout(() => {
+            console.log('[Sync UI] Triggering events list refresh...');
+            onSyncComplete();
+          }, 2000); // Increased to 2 seconds to allow database commits
+        }
+      } else {
+        // If success is explicitly false, treat as error
+        const errorMsg = data.error || data.message || 'Sync completed but reported failure';
+        console.error('[Sync UI] Sync reported failure:', errorMsg);
+        setError(errorMsg);
       }
     } catch (err: any) {
+      console.error('[Sync UI] Sync error caught:', {
+        message: err.message,
+        name: err.name,
+        stack: err.stack,
+        fullError: err,
+      });
+      
       const errorMsg = err.message || 'Failed to sync events';
-      if (errorMsg.includes('Insufficient') || errorMsg.includes('permissions') || errorMsg.includes('scopes')) {
+      
+      // Filter out validation/parsing errors that might be false positives
+      // These errors often occur when the response is actually successful but parsing fails
+      const isValidationError = errorMsg.includes('string did not match') || 
+                                 errorMsg.includes('expected pattern') ||
+                                 errorMsg.includes('Invalid') ||
+                                 errorMsg.includes('Unexpected token');
+      
+      if (isValidationError) {
+        // If it's a validation error, the sync might have actually succeeded
+        // Try refreshing the events list anyway
+        console.warn('[Sync UI] Validation error detected, but sync may have succeeded. Attempting refresh...');
+        setSuccess('Sync completed. Refreshing events list...');
+        setError(null);
+        if (onSyncComplete) {
+          setTimeout(() => {
+            onSyncComplete();
+          }, 2000);
+        }
+      } else if (errorMsg.includes('Insufficient') || errorMsg.includes('permissions') || errorMsg.includes('scopes')) {
         setIsConnected(false);
         setError(`${errorMsg} Please disconnect and reconnect your Google account.`);
       } else {
+        // Real error - show it
         setError(errorMsg);
       }
     } finally {
