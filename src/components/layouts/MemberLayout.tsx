@@ -71,9 +71,13 @@ export default function MemberLayout({ children }: MemberLayoutProps) {
       <div className="driven-header">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold driven-header">LAB Member Hub</h1>
-              <p className="text-lg mt-2 driven-header">Welcome back, {user.name}!</p>
+            <div className="space-y-1">
+              <h1 className="text-2xl font-semibold driven-header">
+                DRIVEN Community Institute: Where personal energy fuels collective impact
+              </h1>
+              <p className="text-base font-medium driven-header opacity-90">
+                Communication Hub
+              </p>
             </div>
             <div className="flex items-center space-x-4">
               <span className="text-sm text-gray-300 capitalize">Member</span>

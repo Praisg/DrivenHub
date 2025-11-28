@@ -122,6 +122,7 @@ export default function HierarchicalSkillAssignment({ onAssignmentComplete }: Hi
           }
 
           // Add new skill assignment
+          // Don't set adminApproved - leave it undefined/null so it's not marked as rejected
           memberSkillEntry.skills.push({
             skillId,
             skillName: skill.name,
@@ -139,7 +140,7 @@ export default function HierarchicalSkillAssignment({ onAssignmentComplete }: Hi
             },
             nextTask: 'Start learning this skill',
             achievements: [],
-            adminApproved: false
+            // Don't set adminApproved - new assignments should have no admin status
           });
         });
       });

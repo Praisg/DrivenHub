@@ -232,16 +232,42 @@ export default function MemberSkillsManagement({ onUpdate }: MemberSkillsManagem
                                     <div className="flex items-center space-x-2 mb-1">
                                       <div className="flex-1 bg-gray-200 rounded-full h-2">
                                         <div
-                                          className="bg-blue-600 h-2 rounded-full transition-all"
+                                          className={`h-2 rounded-full transition-all ${
+                                            memberSkill.status === 'COMPLETED'
+                                              ? 'bg-green-600'
+                                              : memberSkill.adminApproved === false
+                                              ? 'bg-red-600'
+                                              : 'bg-blue-600'
+                                          }`}
                                           style={{ width: `${memberSkill.progress || 0}%` }}
                                         />
                                       </div>
-                                      <span className="text-sm font-medium text-gray-700">
+                                      <span className={`text-sm font-medium ${
+                                        memberSkill.status === 'COMPLETED'
+                                          ? 'text-green-700'
+                                          : memberSkill.adminApproved === false
+                                          ? 'text-red-700'
+                                          : 'text-gray-700'
+                                      }`}>
                                         {memberSkill.progress || 0}%
                                       </span>
                                     </div>
                                     <p className="text-xs text-gray-500">
-                                      Status: <span className="font-medium capitalize">{memberSkill.status || 'NOT_STARTED'}</span>
+                                      Status: <span className={`font-medium capitalize ${
+                                        memberSkill.status === 'COMPLETED' 
+                                          ? 'text-green-700' 
+                                          : memberSkill.adminApproved === false
+                                          ? 'text-red-700'
+                                          : 'text-gray-700'
+                                      }`}>
+                                        {memberSkill.status === 'COMPLETED' 
+                                          ? '✓ Completed' 
+                                          : memberSkill.adminApproved === false
+                                          ? '✗ Rejected'
+                                          : memberSkill.status === 'IN_PROGRESS'
+                                          ? 'In Progress'
+                                          : 'Not Started'}
+                                      </span>
                                     </p>
                                     {memberSkill.adminNotes && (
                                       <p className="text-xs text-gray-600 mt-1 italic">

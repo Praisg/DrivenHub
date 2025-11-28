@@ -122,40 +122,78 @@ export async function PUT(
       }
 
       // Update or insert items
+      const upsertResults = [];
       for (const item of validContentItems) {
-        // Prioritize fileUrl from upload, then manual URL, then null
+        // Prioritize fileUrl from upload, but also allow manual URL
+        // If both exist, fileUrl takes precedence (uploaded file)
         const finalUrl = item.fileUrl || item.url || null;
+        
+        // If both fileUrl and url exist, store the manual URL in notes for reference
+        let notes = item.notes || null;
+        if (item.fileUrl && item.url && item.url !== item.fileUrl) {
+          notes = notes 
+            ? `${notes}\n\nExternal URL: ${item.url}`
+            : `External URL: ${item.url}`;
+        }
+        
         const itemData = {
           skill_id: skillId,
           title: item.title.trim(),
           type: item.type || 'OTHER',
-          url: finalUrl,
-          notes: item.notes || null,
+          url: finalUrl, // Primary URL (uploaded file takes precedence)
+          notes: notes,
           display_order: item.order !== undefined ? item.order : (item.display_order !== undefined ? item.display_order : 0),
         };
 
         if (item.id && existingIds.has(item.id)) {
           // Update existing
-          const { error: updateError } = await supabase
+          const { error: updateError, data: updatedData } = await supabase
             .from('skill_content')
             .update(itemData)
-            .eq('id', item.id);
+            .eq('id', item.id)
+            .select();
           
           if (updateError) {
             console.error('Error updating content item:', updateError);
+            throw new Error(`Failed to update content item "${item.title}": ${updateError.message}`);
           }
+          upsertResults.push(updatedData);
         } else {
           // Insert new
-          const { error: insertError } = await supabase.from('skill_content').insert(itemData);
+          const { error: insertError, data: insertedData } = await supabase
+            .from('skill_content')
+            .insert(itemData)
+            .select();
           
           if (insertError) {
             console.error('Error inserting content item:', insertError);
+            throw new Error(`Failed to insert content item "${item.title}": ${insertError.message}`);
           }
+          upsertResults.push(insertedData);
         }
       }
+      
+      // Log success for debugging
+      console.log(`Successfully upserted ${upsertResults.length} content items for skill ${skillId}`);
     }
 
-    return NextResponse.json({ success: true });
+    // Return updated skill with content count for UI refresh
+    const { data: updatedSkill } = await supabase
+      .from('skills')
+      .select('*')
+      .eq('id', skillId)
+      .single();
+
+    const { count: contentCount } = await supabase
+      .from('skill_content')
+      .select('*', { count: 'exact', head: true })
+      .eq('skill_id', skillId);
+
+    return NextResponse.json({ 
+      success: true,
+      skill: updatedSkill,
+      contentCount: contentCount || 0,
+    });
   } catch (err: any) {
     console.error('Update skill error:', err);
     return NextResponse.json(

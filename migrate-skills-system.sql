@@ -76,37 +76,23 @@ CREATE INDEX IF NOT EXISTS idx_user_content_progress_completed ON user_skill_con
 ALTER TABLE skill_content ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_skill_content_progress ENABLE ROW LEVEL SECURITY;
 
--- RLS Policies for skill_content (admins can manage, members can view)
-CREATE POLICY "Anyone can view active skill content" ON skill_content
+-- RLS Policies for skill_content
+-- Allow all operations since API routes handle authentication/authorization server-side
+-- This matches the pattern used for other tables (skills, member_skills, etc.)
+CREATE POLICY "Allow all to view skill_content" ON skill_content
   FOR SELECT USING (true);
 
-CREATE POLICY "Admins can manage skill content" ON skill_content
-  FOR ALL USING (
-    EXISTS (
-      SELECT 1 FROM members
-      WHERE members.id::text = auth.uid()::text
-      AND members.role = 'admin'
-    )
-  );
+CREATE POLICY "Allow all to manage skill_content" ON skill_content
+  FOR ALL USING (true);
 
--- RLS Policies for user_skill_content_progress (users can only see their own progress)
-CREATE POLICY "Users can view their own progress" ON user_skill_content_progress
-  FOR SELECT USING (
-    EXISTS (
-      SELECT 1 FROM members
-      WHERE members.id = user_skill_content_progress.user_id
-      AND members.id::text = auth.uid()::text
-    )
-  );
+-- RLS Policies for user_skill_content_progress
+-- Allow all operations since API routes handle authentication/authorization server-side
+-- This matches the pattern used for other tables (skills, member_skills, skill_content, etc.)
+CREATE POLICY "Allow all to view user progress" ON user_skill_content_progress
+  FOR SELECT USING (true);
 
-CREATE POLICY "Users can update their own progress" ON user_skill_content_progress
-  FOR ALL USING (
-    EXISTS (
-      SELECT 1 FROM members
-      WHERE members.id = user_skill_content_progress.user_id
-      AND members.id::text = auth.uid()::text
-    )
-  );
+CREATE POLICY "Allow all to manage user progress" ON user_skill_content_progress
+  FOR ALL USING (true);
 
 -- Function to update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()

@@ -89,43 +89,99 @@ export default function SkillForm({ skill, onSave, onCancel }: SkillFormProps) {
 
     setIsLoading(true);
     try {
-      // Handle file uploads first if any
-      const processedContentItems = await Promise.all(
-        contentItems.map(async (item, index) => {
+      // For editing existing skills, upload files immediately with the skillId
+      // For new skills, we'll upload files after skill creation (handled in onSave callback)
+      let processedContentItems: any[] = [];
+      
+      if (skill?.id) {
+        // Editing: upload files now with existing skillId
+        processedContentItems = await Promise.all(
+          contentItems.map(async (item, index) => {
+            const processedItem: any = {
+              ...item,
+              order: item.order !== undefined ? item.order : index,
+            };
+
+            // If file is present, upload it
+            if (item.file) {
+              const formData = new FormData();
+              formData.append('file', item.file);
+              formData.append('skillId', skill.id);
+              formData.append('contentIndex', index.toString());
+
+              try {
+                const uploadResponse = await fetch('/api/admin/skills/upload-content', {
+                  method: 'POST',
+                  body: formData,
+                });
+
+                if (uploadResponse.ok) {
+                  const uploadData = await uploadResponse.json();
+                  processedItem.fileUrl = uploadData.url;
+                  processedItem.fileName = item.fileName;
+                } else {
+                  const errorData = await uploadResponse.json();
+                  console.error('File upload error response:', errorData);
+                  
+                  // Check for permission/policy errors first (most common when bucket exists)
+                  if (
+                    errorData.error?.toLowerCase().includes('permission') || 
+                    errorData.error?.toLowerCase().includes('policy') ||
+                    errorData.error?.toLowerCase().includes('row-level security')
+                  ) {
+                    const instructions = errorData.instructions || [
+                      '1. Go to Supabase Dashboard → SQL Editor',
+                      '2. Run the SQL from setup-storage-policies.sql',
+                      '3. Click "Run" to execute',
+                      '4. Try uploading again'
+                    ];
+                    throw new Error(
+                      `Storage permissions not configured.\n\n${instructions.join('\n')}\n\nSee STORAGE_SETUP.md for details.`
+                    );
+                  }
+                  
+                  // Check for bucket not found errors
+                  if (errorData.error?.toLowerCase().includes('bucket')) {
+                    const instructions = errorData.instructions || [
+                      '1. Go to Supabase Dashboard → Storage',
+                      '2. Verify "skill-content" bucket exists',
+                      '3. Make sure it\'s marked as "Public"',
+                      '4. Run setup-storage-policies.sql in SQL Editor',
+                      '5. Try uploading again'
+                    ];
+                    throw new Error(
+                      `${errorData.error}\n\n${instructions.join('\n')}\n\nSee STORAGE_SETUP.md for details.`
+                    );
+                  }
+                  
+                  // Generic error
+                  throw new Error(
+                    `Failed to upload file: ${errorData.error || errorData.details || 'Unknown error'}\n\nTechnical: ${errorData.technicalDetails || ''}`
+                  );
+                }
+              } catch (uploadError: any) {
+                console.error('File upload error:', uploadError);
+                throw new Error(`Failed to upload file "${item.fileName}": ${uploadError.message || 'Unknown error'}`);
+              }
+            }
+
+            // Remove file object before sending (not serializable)
+            delete processedItem.file;
+            return processedItem;
+          })
+        );
+      } else {
+        // Creating new skill: prepare items but don't upload files yet
+        // Files will be uploaded after skill creation in the onSave callback
+        processedContentItems = contentItems.map((item, index) => {
           const processedItem: any = {
             ...item,
             order: item.order !== undefined ? item.order : index,
           };
-
-          // If file is present, upload it (in production, use proper file storage)
-          if (item.file) {
-            const formData = new FormData();
-            formData.append('file', item.file);
-            formData.append('skillId', skill?.id || 'new');
-            formData.append('contentIndex', index.toString());
-
-            try {
-              const uploadResponse = await fetch('/api/admin/skills/upload-content', {
-                method: 'POST',
-                body: formData,
-              });
-
-              if (uploadResponse.ok) {
-                const uploadData = await uploadResponse.json();
-                processedItem.fileUrl = uploadData.url;
-                processedItem.fileName = item.fileName;
-              }
-            } catch (uploadError) {
-              console.error('File upload error:', uploadError);
-              // Continue without file URL - admin can add URL manually
-            }
-          }
-
-          // Remove file object before sending (not serializable)
-          delete processedItem.file;
+          // Keep file reference for later upload after skill creation
           return processedItem;
-        })
-      );
+        });
+      }
 
       await onSave(
         { name, description, level },
@@ -241,39 +297,60 @@ export default function SkillForm({ skill, onSave, onCancel }: SkillFormProps) {
 
                 <div className="mb-3">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    URL or Upload File
+                    URL (Optional - for external links)
                   </label>
-                  <div className="space-y-2">
-                    <input
-                      type="url"
-                      value={item.url || ''}
-                      onChange={(e) => updateContentItem(index, { url: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="https://... or upload file below"
-                    />
-                    <input
-                      type="file"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          // Store file reference - in production, upload to storage service
-                          updateContentItem(index, { 
-                            file: file,
-                            fileName: file.name,
-                            fileSize: file.size,
-                            fileType: file.type
-                          });
-                        }
-                      }}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                      accept=".pdf,.doc,.docx,.txt,.epub,.mobi"
-                    />
-                    {item.fileName && (
-                      <p className="text-sm text-gray-600">
-                        Selected: {item.fileName} ({(item.fileSize || 0) / 1024} KB)
+                  <input
+                    type="url"
+                    value={item.url || ''}
+                    onChange={(e) => updateContentItem(index, { url: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="https://... (optional, for external links)"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    You can provide a URL for external resources, or upload a file below, or both.
+                  </p>
+                </div>
+
+                <div className="mb-3">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Upload File (Optional - for PDFs, documents, etc.)
+                  </label>
+                  <input
+                    type="file"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        // Store file reference
+                        updateContentItem(index, { 
+                          file: file,
+                          fileName: file.name,
+                          fileSize: file.size,
+                          fileType: file.type
+                        });
+                      }
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    accept=".pdf,.doc,.docx,.txt,.epub,.mobi,.jpg,.jpeg,.png,.gif,.mp4,.mp3"
+                  />
+                  {item.fileName && (
+                    <div className="mt-2 p-2 bg-blue-50 rounded border border-blue-200">
+                      <p className="text-sm text-blue-800">
+                        ✓ Selected: <strong>{item.fileName}</strong> ({(item.fileSize || 0) / 1024} KB)
                       </p>
-                    )}
-                  </div>
+                      <button
+                        type="button"
+                        onClick={() => updateContentItem(index, { file: undefined, fileName: undefined, fileSize: undefined, fileType: undefined })}
+                        className="text-xs text-blue-600 hover:text-blue-800 mt-1 underline"
+                      >
+                        Remove file
+                      </button>
+                    </div>
+                  )}
+                  {!item.url && !item.fileName && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      Provide either a URL or upload a file (or both).
+                    </p>
+                  )}
                 </div>
 
                 <div className="mb-3">

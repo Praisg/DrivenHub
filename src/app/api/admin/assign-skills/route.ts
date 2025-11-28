@@ -46,7 +46,9 @@ export async function POST(req: NextRequest) {
         progress: skill.progress || 0,
         status: skill.status || 'NOT_STARTED',
         assigned_date: skill.assignedDate || new Date().toISOString(),
-        admin_approved: skill.adminApproved || false,
+        // Don't set admin_approved to false by default - leave it as null for new assignments
+        // Only set to false if explicitly rejected, true if explicitly approved
+        admin_approved: skill.adminApproved !== undefined ? skill.adminApproved : null,
         current_milestone: skill.currentMilestone || 'milestone-1',
         completed_milestones: skill.completedMilestones || [],
         milestone_progress: skill.milestoneProgress || {},

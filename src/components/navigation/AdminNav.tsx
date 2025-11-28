@@ -7,14 +7,16 @@ import {
   CalendarIcon, 
   BriefcaseIcon, 
   ClipboardDocumentListIcon,
-  UserGroupIcon
+  UserGroupIcon,
+  MegaphoneIcon
 } from '@heroicons/react/24/outline';
 import { 
   HomeIcon as HomeIconSolid, 
   CalendarIcon as CalendarIconSolid, 
   BriefcaseIcon as BriefcaseIconSolid, 
   ClipboardDocumentListIcon as ClipboardDocumentListIconSolid,
-  UserGroupIcon as UserGroupIconSolid
+  UserGroupIcon as UserGroupIconSolid,
+  MegaphoneIcon as MegaphoneIconSolid
 } from '@heroicons/react/24/solid';
 
 interface NavItem {
@@ -26,6 +28,7 @@ interface NavItem {
 
 const navigation: NavItem[] = [
   { name: 'Home', href: '/admin/home', icon: HomeIcon, iconSolid: HomeIconSolid },
+  { name: 'Announcements', href: '/admin/announcements', icon: MegaphoneIcon, iconSolid: MegaphoneIconSolid },
   { name: 'Events', href: '/admin/events', icon: CalendarIcon, iconSolid: CalendarIconSolid },
   { name: 'Skills Wallet', href: '/admin/skills-wallet', icon: BriefcaseIcon, iconSolid: BriefcaseIconSolid },
   { name: 'Assignments', href: '/admin/assignments', icon: UserGroupIcon, iconSolid: UserGroupIconSolid },

@@ -13,6 +13,29 @@ export async function DELETE(
     const { memberId, skillId } = params;
     const supabase = getSupabase();
 
+    // Get all content items for this skill before deleting
+    const { data: contentItems } = await supabase
+      .from('skill_content')
+      .select('id')
+      .eq('skill_id', skillId);
+
+    const contentIds = (contentItems || []).map((c: any) => c.id);
+
+    // Delete all user progress for this skill (remove all progress records)
+    // This ensures no orphaned progress data remains
+    if (contentIds.length > 0) {
+      const { error: progressError } = await supabase
+        .from('user_skill_content_progress')
+        .delete()
+        .eq('user_id', memberId)
+        .in('content_id', contentIds);
+
+      if (progressError) {
+        console.error('Error deleting user progress:', progressError);
+        // Continue anyway - main operation is deleting member_skills
+      }
+    }
+
     // Delete from member_skills table
     const { error: deleteError } = await supabase
       .from('member_skills')

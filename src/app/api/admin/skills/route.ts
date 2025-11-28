@@ -94,30 +94,62 @@ export async function POST(req: NextRequest) {
 
     // Create content items if provided
     if (contentItems && Array.isArray(contentItems) && contentItems.length > 0) {
-      const contentInserts = contentItems.map((item: any, index: number) => {
-        // Prioritize fileUrl from upload, then manual URL, then null
-        const finalUrl = item.fileUrl || item.url || null;
-        return {
-          skill_id: skillId,
-          title: item.title,
-          type: item.type || 'OTHER',
-          url: finalUrl,
-          notes: item.notes || null,
-          display_order: item.order !== undefined ? item.order : index,
-        };
-      });
+      // Filter out items without titles
+      const validItems = contentItems.filter((item: any) => item.title && item.title.trim() !== '');
+      
+      if (validItems.length > 0) {
+        const contentInserts = validItems.map((item: any, index: number) => {
+          // Prioritize fileUrl from upload, but also allow manual URL
+          // If both exist, fileUrl takes precedence (uploaded file)
+          // If only URL exists, use that (external link)
+          // Store both in notes if needed, but url field gets the primary one
+          const finalUrl = item.fileUrl || item.url || null;
+          
+          // If both fileUrl and url exist, store the manual URL in notes for reference
+          let notes = item.notes || null;
+          if (item.fileUrl && item.url && item.url !== item.fileUrl) {
+            notes = notes 
+              ? `${notes}\n\nExternal URL: ${item.url}`
+              : `External URL: ${item.url}`;
+          }
+          
+          return {
+            skill_id: skillId,
+            title: item.title.trim(),
+            type: item.type || 'OTHER',
+            url: finalUrl, // Primary URL (uploaded file takes precedence)
+            notes: notes,
+            display_order: item.order !== undefined ? item.order : index,
+          };
+        });
 
-      const { error: contentError } = await supabase
-        .from('skill_content')
-        .insert(contentInserts);
+        const { error: contentError, data: insertedContent } = await supabase
+          .from('skill_content')
+          .insert(contentInserts)
+          .select();
 
-      if (contentError) {
-        console.error('Error creating content items:', contentError);
-        // Don't fail the whole operation, but log the error
+        if (contentError) {
+          console.error('Error creating content items:', contentError);
+          throw new Error(`Failed to create content items: ${contentError.message}`);
+        }
+        
+        // Log success for debugging
+        console.log(`Successfully created ${insertedContent?.length || 0} content items for skill ${skillId}`);
+        
+        // Return skill with content items for easier frontend handling
+        return NextResponse.json({ 
+          skill,
+          contentItems: insertedContent || [],
+          contentCount: insertedContent?.length || 0,
+        }, { status: 201 });
       }
     }
 
-    return NextResponse.json({ skill }, { status: 201 });
+    return NextResponse.json({ 
+      skill,
+      contentItems: [],
+      contentCount: 0,
+    }, { status: 201 });
   } catch (err: any) {
     console.error('Create skill error:', err);
     return NextResponse.json(

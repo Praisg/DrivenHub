@@ -20,7 +20,6 @@ interface DashboardProps {
 }
 
 export default function Dashboard({ user }: DashboardProps) {
-  const announcements = getAnnouncements();
   const events = getEvents();
   const emails = getEmails();
   const members = getMembers();
@@ -32,6 +31,8 @@ export default function Dashboard({ user }: DashboardProps) {
   const [skills, setSkills] = useState<any[]>([]);
   const [memberSkills, setMemberSkills] = useState<any[]>([]);
   const [registeredMembers, setRegisteredMembers] = useState(getRegisteredMembers());
+  const [announcements, setAnnouncements] = useState<any[]>([]);
+  const [announcementsLoading, setAnnouncementsLoading] = useState(true);
 
   // Load skills and member skills from database
   useEffect(() => {
@@ -56,6 +57,30 @@ export default function Dashboard({ user }: DashboardProps) {
 
     return () => clearInterval(interval);
   }, [user.id]);
+
+  // Load announcements from API
+  useEffect(() => {
+    const loadAnnouncements = async () => {
+      try {
+        setAnnouncementsLoading(true);
+        const response = await fetch('/api/member/announcements?limit=5');
+        if (response.ok) {
+          const data = await response.json();
+          setAnnouncements(data.announcements || []);
+        } else {
+          console.error('Failed to fetch announcements');
+          setAnnouncements([]);
+        }
+      } catch (error) {
+        console.error('Error loading announcements:', error);
+        setAnnouncements([]);
+      } finally {
+        setAnnouncementsLoading(false);
+      }
+    };
+
+    loadAnnouncements();
+  }, []);
 
 
   const refreshMemberSkills = async () => {
@@ -200,17 +225,28 @@ export default function Dashboard({ user }: DashboardProps) {
                 {/* Announcements */}
                 <Card>
                   <h2 className="text-xl font-semibold text-gray-900 mb-4">Latest Announcements</h2>
-                  <div className="space-y-4">
-                    {announcements.slice(0, 3).map((announcement) => (
-                      <div key={announcement.id} className="border-l-4 border-blue-500 pl-4">
-                        <h3 className="font-medium text-gray-900">{announcement.title}</h3>
-                        <p className="text-sm text-gray-600 mt-1">{announcement.body}</p>
-                        <p className="text-xs text-gray-500 mt-2">
-                          {new Date(announcement.dateISO).toLocaleDateString()}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
+                  {announcementsLoading ? (
+                    <div className="text-center py-4">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                      <p className="text-sm text-gray-600">Loading announcements...</p>
+                    </div>
+                  ) : announcements.length === 0 ? (
+                    <div className="text-center py-8">
+                      <p className="text-gray-600">No announcements yet.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {announcements.map((announcement) => (
+                        <div key={announcement.id} className="border-l-4 border-blue-500 pl-4">
+                          <h3 className="font-medium text-gray-900">{announcement.title}</h3>
+                          <p className="text-sm text-gray-600 mt-1">{announcement.body}</p>
+                          <p className="text-xs text-gray-500 mt-2">
+                            {new Date(announcement.dateISO).toLocaleDateString()}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </Card>
 
                 {/* Upcoming Events */}

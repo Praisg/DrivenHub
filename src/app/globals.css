@@ -11,8 +11,10 @@
   --border: #e5e7eb;
   --card-bg: #ffffff;
   --section-bg: #f8fafc;
-  --driven-purple: #4a235a;
-  --driven-green: #6b8e23;
+  --driven-purple: #682770;
+  --driven-green: #7EA25A;
+  --driven-yellow: #FFAC25;
+  --driven-white: #FCFAF6;
 }
 
 @theme inline {
@@ -165,16 +167,17 @@ a:focus-visible {
 /* DRIVEN-style header */
 .driven-header {
   background: var(--driven-purple);
-  color: white;
+  color: var(--driven-white);
   padding: 16px 0;
 }
 
 .driven-header h1 {
-  color: white;
+  color: var(--driven-white);
   font-weight: 700;
   font-size: 2rem;
 }
 
 .driven-header p {
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--driven-white);
+  opacity: 0.9;
 }

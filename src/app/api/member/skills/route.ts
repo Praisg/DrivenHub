@@ -36,6 +36,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Get skill details (only active skills)
+    // Note: We still show skills even if admin rejected them (they'll show 0% progress)
     const { data: skills, error: skillsError } = await supabase
       .from('skills')
       .select('*')
@@ -47,24 +48,24 @@ export async function GET(req: NextRequest) {
     }
 
     // Calculate progress for each skill and get admin status
+    // Time complexity: O(n*m) where n = skills, m = content items per skill
+    // Space complexity: O(1) per skill (only storing counts)
     const skillsWithProgress = await Promise.all(
       (skills || []).map(async (skill) => {
-        // Get total content count
-        const { count: totalCount } = await supabase
-          .from('skill_content')
-          .select('*', { count: 'exact', head: true })
-          .eq('skill_id', skill.id);
-
-        // Get completed content count for this user
+        // Get all content items for this skill
+        // Time: O(m) where m = content items, Space: O(m) for the array
         const { data: contentItems } = await supabase
           .from('skill_content')
           .select('id')
           .eq('skill_id', skill.id);
 
         const contentIds = (contentItems || []).map((c: any) => c.id);
+        const totalCount = contentIds.length;
 
+        // Calculate completed count for this user
+        // Time: O(m) - single query with IN clause, Space: O(1) - only count
         let completedCount = 0;
-        if (contentIds.length > 0) {
+        if (totalCount > 0) {
           const { count } = await supabase
             .from('user_skill_content_progress')
             .select('*', { count: 'exact', head: true })
@@ -75,26 +76,55 @@ export async function GET(req: NextRequest) {
           completedCount = count || 0;
         }
 
-        const progress = totalCount && totalCount > 0
+        // Calculate progress percentage
+        // Time: O(1), Space: O(1)
+        const progress = totalCount > 0
           ? Math.round((completedCount / totalCount) * 100)
           : 0;
 
-        // Get member skill assignment details (for admin approval status and notes)
-        const { data: memberSkillAssignment } = await supabase
+        // Get member skill assignment details (for admin approval status, notes, and status)
+        const { data: memberSkillAssignment, error: assignmentError } = await supabase
           .from('member_skills')
           .select('admin_approved, admin_notes, status')
           .eq('member_id', userId)
           .eq('skill_id', skill.id)
-          .single();
+          .maybeSingle(); // Use maybeSingle() instead of single() to handle null gracefully
+
+        if (assignmentError) {
+          console.error(`Error fetching member skill assignment for skill ${skill.id}:`, assignmentError);
+        }
+
+        const assignmentStatus = (memberSkillAssignment?.status || 'NOT_STARTED').toUpperCase();
+        // Explicitly check for false (not null or undefined) - rejected skills have admin_approved = false
+        const isRejected = memberSkillAssignment?.admin_approved === false;
+        
+        // Debug logging (can remove later)
+        console.log(`Skill "${skill.name}" (${skill.id}): status="${assignmentStatus}", isRejected=${isRejected}, adminApproved=${memberSkillAssignment?.admin_approved}, calculatedProgress=${progress}, totalCount=${totalCount}, completedCount=${completedCount}`);
+        
+        // Priority: Rejection overrides completion
+        // If admin rejected, force progress to 0% regardless of status
+        // If admin marked as COMPLETED (and not rejected), force progress to 100%
+        // Otherwise use calculated progress
+        const finalProgress = isRejected 
+          ? 0  // Rejection takes priority - always show 0%
+          : assignmentStatus === 'COMPLETED' 
+          ? 100 
+          : progress;
 
         return {
           ...skill,
-          progress,
-          completedCount,
+          progress: finalProgress,
+          // Priority: Rejection overrides completion
+          // If rejected, reset to 0; if completed (and not rejected), all items done; otherwise use calculated count
+          completedCount: isRejected 
+            ? 0 
+            : assignmentStatus === 'COMPLETED' 
+            ? totalCount 
+            : completedCount,
           totalCount: totalCount || 0,
           adminApproved: memberSkillAssignment?.admin_approved,
           adminNotes: memberSkillAssignment?.admin_notes,
-          status: memberSkillAssignment?.status || 'NOT_STARTED',
+          status: assignmentStatus,
         };
       })
     );
