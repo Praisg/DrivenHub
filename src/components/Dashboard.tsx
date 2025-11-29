@@ -217,27 +217,93 @@ export default function Dashboard({ user }: DashboardProps) {
 
                 {/* Announcements */}
                 <Card>
-                  <h2 className="text-xl font-semibold text-gray-900 mb-4">Latest Announcements</h2>
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-xl font-semibold text-gray-900">Latest Announcements</h2>
+                    {announcements.length > 0 && (
+                      <span className="text-sm font-medium text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                        {announcements.length} {announcements.length === 1 ? 'announcement' : 'announcements'}
+                      </span>
+                    )}
+                  </div>
                   {announcementsLoading ? (
-                    <div className="text-center py-4">
-                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                    <div className="text-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-3"></div>
                       <p className="text-sm text-gray-600">Loading announcements...</p>
                     </div>
                   ) : announcements.length === 0 ? (
-                    <div className="text-center py-8">
-                      <p className="text-gray-600">No announcements yet.</p>
+                    <div className="text-center py-12">
+                      <div className="text-4xl mb-3">📢</div>
+                      <p className="text-gray-600 font-medium">No announcements yet.</p>
+                      <p className="text-sm text-gray-500 mt-1">Check back soon for updates!</p>
                     </div>
                   ) : (
                     <div className="space-y-4">
-                      {announcements.map((announcement) => (
-                        <div key={announcement.id} className="border-l-4 border-blue-500 pl-4">
-                          <h3 className="font-medium text-gray-900">{announcement.title}</h3>
-                          <p className="text-sm text-gray-600 mt-1">{announcement.body}</p>
-                          <p className="text-xs text-gray-500 mt-2">
-                            {new Date(announcement.dateISO).toLocaleDateString()}
-                          </p>
-                        </div>
-                      ))}
+                      {announcements.map((announcement, index) => {
+                        const announcementDate = new Date(announcement.dateISO);
+                        const isRecent = (Date.now() - announcementDate.getTime()) < 7 * 24 * 60 * 60 * 1000; // Within last 7 days
+                        const formattedDate = announcementDate.toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric'
+                        });
+                        
+                        return (
+                          <div
+                            key={announcement.id}
+                            className="group relative bg-gradient-to-r from-white to-gray-50 rounded-lg border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all duration-200 p-5"
+                          >
+                            {/* Left accent bar */}
+                            <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-blue-500 to-indigo-600 rounded-l-lg"></div>
+                            
+                            <div className="pl-4">
+                              {/* Header with title and badge */}
+                              <div className="flex items-start justify-between gap-3 mb-2">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <h3 className="font-semibold text-gray-900 text-lg group-hover:text-blue-700 transition-colors">
+                                      {announcement.title}
+                                    </h3>
+                                    {isRecent && (
+                                      <span className="inline-flex items-center px-2 py-0.5 text-xs font-semibold bg-green-100 text-green-700 rounded-full">
+                                        New
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-2 text-xs text-gray-500">
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                    </svg>
+                                    <span>{formattedDate}</span>
+                                  </div>
+                                </div>
+                                {/* Announcement icon */}
+                                <div className="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center group-hover:bg-blue-200 transition-colors">
+                                  <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
+                                  </svg>
+                                </div>
+                              </div>
+                              
+                              {/* Body text */}
+                              <div className="mt-3">
+                                <p className="text-sm text-gray-700 leading-relaxed line-clamp-3">
+                                  {announcement.body}
+                                </p>
+                              </div>
+                              
+                              {/* Decorative bottom border on hover */}
+                              <div className="mt-4 pt-4 border-t border-gray-100 group-hover:border-blue-200 transition-colors">
+                                <div className="flex items-center text-xs text-gray-500 group-hover:text-blue-600 transition-colors">
+                                  <span>Community update</span>
+                                  <svg className="w-3 h-3 ml-1 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                  </svg>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </Card>
