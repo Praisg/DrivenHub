@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import AdminLayout from '@/components/layouts/AdminLayout';
+import ConfirmDialog from '@/components/admin/ConfirmDialog';
 import { Button } from '@/components';
 import { getCurrentUser } from '@/lib/auth';
 
@@ -24,6 +25,8 @@ export default function AdminAnnouncementsPage() {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
   const user = getCurrentUser();
 
   useEffect(() => {
@@ -50,13 +53,16 @@ export default function AdminAnnouncementsPage() {
     }
   };
 
-  const handleDelete = async (id: string, title: string) => {
-    if (!confirm(`Are you sure you want to delete "${title}"?`)) {
-      return;
-    }
+  const handleDelete = (id: string, title: string) => {
+    setDeleteTarget({ id, title });
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
 
     try {
-      const response = await fetch(`/api/admin/announcements/${id}`, {
+      const response = await fetch(`/api/admin/announcements/${deleteTarget.id}`, {
         method: 'DELETE',
       });
 
@@ -64,10 +70,14 @@ export default function AdminAnnouncementsPage() {
         throw new Error('Failed to delete announcement');
       }
 
+      setShowDeleteConfirm(false);
+      setDeleteTarget(null);
       // Refresh list
       fetchAnnouncements();
     } catch (err: any) {
-      alert(`Failed to delete announcement: ${err.message}`);
+      setError(`Failed to delete announcement: ${err.message}`);
+      setShowDeleteConfirm(false);
+      setDeleteTarget(null);
     }
   };
 
@@ -180,6 +190,21 @@ export default function AdminAnnouncementsPage() {
             </table>
           </div>
         )}
+
+        {/* Delete Confirmation Dialog */}
+        <ConfirmDialog
+          open={showDeleteConfirm}
+          title="Delete this announcement?"
+          description={`This will permanently delete "${deleteTarget?.title || ''}". This action cannot be undone.`}
+          confirmLabel="Yes, delete"
+          cancelLabel="Cancel"
+          confirmVariant="danger"
+          onConfirm={confirmDelete}
+          onCancel={() => {
+            setShowDeleteConfirm(false);
+            setDeleteTarget(null);
+          }}
+        />
       </div>
     </AdminLayout>
   );

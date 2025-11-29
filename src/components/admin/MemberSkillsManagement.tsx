@@ -90,8 +90,9 @@ export default function MemberSkillsManagement({ onUpdate }: MemberSkillsManagem
     }
   };
 
-  const handleDelete = async (memberId: string, skillId: string) => {
-    if (!confirm('Are you sure you want to remove this skill assignment from this member?')) {
+  const handleDelete = async (memberId: string, skillId: string, skillName: string, memberName: string) => {
+    // We'll use a simple confirm for now, but could upgrade to ConfirmDialog if needed
+    if (!confirm(`Are you sure you want to remove "${skillName}" from ${memberName}? This action cannot be undone.`)) {
       return;
     }
     try {
@@ -304,7 +305,8 @@ export default function MemberSkillsManagement({ onUpdate }: MemberSkillsManagem
                                   <Button
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      handleDelete(member.id, memberSkill.skillId);
+                                      const skill = getSkillDetails(memberSkill.skillId);
+                                      handleDelete(member.id, memberSkill.skillId, skill?.name || memberSkill.skillName, member.name);
                                     }}
                                     variant="outline"
                                     size="sm"

@@ -3,6 +3,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import AdminLayout from '@/components/layouts/AdminLayout';
 import GoogleCalendarSync from '@/components/admin/GoogleCalendarSync';
+import ConfirmDialog from '@/components/admin/ConfirmDialog';
+import { Button } from '@/components';
 import { getCurrentUser } from '@/lib/auth';
 import { getSupabase } from '@/lib/supabase';
 
@@ -21,6 +23,9 @@ export default function AdminEventsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
   const user = getCurrentUser();
 
   const fetchAllEvents = useCallback(async (retryCount = 0, isPostSync = false) => {
@@ -74,6 +79,62 @@ export default function AdminEventsPage() {
     fetchAllEvents();
   }, [fetchAllEvents]);
 
+  const handleClearEvents = async () => {
+    setIsClearing(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const response = await fetch('/api/admin/events/clear', {
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Failed to clear events' }));
+        throw new Error(errorData.error || 'Failed to clear events');
+      }
+
+      const data = await response.json();
+      setSuccess(data.message || `Cleared ${data.cleared || 0} synced events`);
+      setShowClearConfirm(false);
+      
+      // Refresh events list
+      await fetchAllEvents();
+    } catch (err: any) {
+      setError(err.message || 'Failed to clear events');
+    } finally {
+      setIsClearing(false);
+    }
+  };
+
+  // Group events by date
+  const groupEventsByDate = (events: any[]) => {
+    const grouped: { [key: string]: any[] } = {};
+    
+    events.forEach((event) => {
+      const date = event.startISO ? new Date(event.startISO) : null;
+      if (date && !isNaN(date.getTime())) {
+        const dateKey = date.toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+        });
+        if (!grouped[dateKey]) {
+          grouped[dateKey] = [];
+        }
+        grouped[dateKey].push(event);
+      } else {
+        // Events without valid dates go to "Other"
+        if (!grouped['Other']) {
+          grouped['Other'] = [];
+        }
+        grouped['Other'].push(event);
+      }
+    });
+
+    return grouped;
+  };
+
   return (
     <AdminLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -85,7 +146,27 @@ export default function AdminEventsPage() {
         {/* Google Calendar Sync */}
         <div className="mb-8">
           <GoogleCalendarSync onSyncComplete={() => fetchAllEvents(0, true)} />
+          
+          {/* Clear Synced Events Button */}
+          {allEvents.length > 0 && (
+            <div className="mt-4">
+              <Button
+                onClick={() => setShowClearConfirm(true)}
+                variant="outline"
+                className="border-red-300 text-red-700 hover:bg-red-50"
+              >
+                Clear Synced Events
+              </Button>
+            </div>
+          )}
         </div>
+
+        {/* Success Message */}
+        {success && (
+          <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+            <p className="text-green-800 text-sm">{success}</p>
+          </div>
+        )}
 
         {/* All Events List */}
         <div className="bg-white rounded-lg shadow-md p-6">
@@ -113,50 +194,101 @@ export default function AdminEventsPage() {
               <p className="text-gray-600">No events synced yet. Use the sync button above to import events from Google Calendar.</p>
             </div>
           ) : (
-            <div className="space-y-4">
-              {allEvents.map((event: any) => {
-                // Safely parse dates with validation
-                const startDate = event.startISO ? new Date(event.startISO) : null;
-                const endDate = event.endISO ? new Date(event.endISO) : null;
-                const startStr = startDate && !isNaN(startDate.getTime()) 
-                  ? startDate.toLocaleString() 
-                  : 'Invalid date';
-                const endStr = endDate && !isNaN(endDate.getTime()) 
-                  ? endDate.toLocaleString() 
-                  : 'Invalid date';
-                
-                return (
-                  <div key={event.id} className="border border-gray-200 rounded-lg p-4">
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <h3 className="font-semibold text-gray-900">{event.title || 'Untitled Event'}</h3>
-                        <p className="text-sm text-gray-600 mt-1">{event.description || 'No description'}</p>
-                        <div className="mt-2 text-xs text-gray-500">
-                          <p>Start: {startStr}</p>
-                          <p>End: {endStr}</p>
-                          {event.organizerEmail && <p>Organizer: {event.organizerEmail}</p>}
-                          {event.attendeesEmails && event.attendeesEmails.length > 0 && (
-                            <p className="mt-1">
-                              Attendees ({event.attendeesEmails.length}): {event.attendeesEmails.slice(0, 3).join(', ')}
-                              {event.attendeesEmails.length > 3 && ` +${event.attendeesEmails.length - 3} more`}
-                            </p>
+            <div className="overflow-x-auto">
+              {/* Table Layout */}
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Title
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Date/Time
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Attendees
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Meeting Link
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {allEvents.map((event: any) => {
+                    const startDate = event.startISO ? new Date(event.startISO) : null;
+                    const endDate = event.endISO ? new Date(event.endISO) : null;
+                    const startStr = startDate && !isNaN(startDate.getTime()) 
+                      ? startDate.toLocaleString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })
+                      : 'Invalid date';
+                    const attendeesCount = event.attendeesEmails?.length || 0;
+                    
+                    return (
+                      <tr key={event.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900">{event.title || 'Untitled Event'}</div>
+                          {event.description && (
+                            <div className="text-xs text-gray-500 mt-1 line-clamp-2 max-w-xs">
+                              {event.description}
+                            </div>
                           )}
-                          {event.zoomUrl && isValidUrl(event.zoomUrl) && (
-                            <p className="mt-1">
-                              <a href={event.zoomUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-                                Join Meeting
-                              </a>
-                            </p>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">{startStr}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">
+                            {attendeesCount > 0 ? (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                {attendeesCount} {attendeesCount === 1 ? 'attendee' : 'attendees'}
+                              </span>
+                            ) : (
+                              <span className="text-gray-400">No attendees</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          {event.zoomUrl && isValidUrl(event.zoomUrl) ? (
+                            <a
+                              href={event.zoomUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:text-blue-800 inline-flex items-center gap-1"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                              </svg>
+                              Join Meeting
+                            </a>
+                          ) : (
+                            <span className="text-gray-400">—</span>
                           )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           )}
         </div>
+
+        {/* Clear Events Confirmation Dialog */}
+        <ConfirmDialog
+          open={showClearConfirm}
+          title="Clear all synced events?"
+          description="This will delete all events that have been synced from Google Calendar, and remove them from members' views. This action cannot be undone."
+          confirmLabel="Yes, clear events"
+          cancelLabel="Cancel"
+          confirmVariant="danger"
+          onConfirm={handleClearEvents}
+          onCancel={() => setShowClearConfirm(false)}
+        />
       </div>
     </AdminLayout>
   );
