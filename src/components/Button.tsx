@@ -40,12 +40,14 @@ export default function Button({
   const classes = `${baseClasses} ${variantClasses[variant]} ${sizeClasses[size]} ${disabledClasses} ${className}`;
   
   if (href) {
+    // Check if href is external (starts with http:// or https:// and is not our domain)
+    const isExternal = href.startsWith('http://') || href.startsWith('https://');
+    
     return (
       <a
         href={href}
         className={classes}
-        target="_blank"
-        rel="noopener noreferrer"
+        {...(isExternal ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
       >
         {children}
       </a>

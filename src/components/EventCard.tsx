@@ -48,8 +48,6 @@ export default function EventCard({ event }: EventCardProps) {
             href={event.zoomUrl}
             variant="primary"
             size="sm"
-            target="_blank"
-            rel="noopener noreferrer"
           >
             {event.zoomUrl.includes('zoom.us') ? 'Join Zoom' : 
              event.zoomUrl.includes('meet.google.com') ? 'Join Google Meet' : 

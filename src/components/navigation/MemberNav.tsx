@@ -32,7 +32,6 @@ const navigation: NavItem[] = [
   { name: 'Events', href: '/member/events', icon: CalendarIcon, iconSolid: CalendarIconSolid },
   { name: 'Coaching', href: '/member/coaching', icon: AcademicCapIcon, iconSolid: AcademicCapIconSolid },
   { name: 'Resources', href: '/member/resources', icon: DocumentTextIcon, iconSolid: DocumentTextIconSolid },
-  { name: 'Surveys', href: '/member/surveys', icon: ClipboardDocumentListIcon, iconSolid: ClipboardDocumentListIconSolid },
 ];
 
 export default function MemberNav() {

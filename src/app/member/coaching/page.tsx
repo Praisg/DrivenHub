@@ -1,138 +1,145 @@
 'use client';
 
+import { useState } from 'react';
 import MemberLayout from '@/components/layouts/MemberLayout';
-import { EmbeddedFrame, Accordion } from '@/components';
+import { Card, Button } from '@/components';
+import { getCurrentUser } from '@/lib/auth';
 
 export default function MemberCoachingPage() {
-  const calendlyUrl = process.env.NEXT_PUBLIC_CALENDLY_URL;
+  const [topic, setTopic] = useState('');
+  const [details, setDetails] = useState('');
+  const [preferredDates, setPreferredDates] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
 
-  const faqs = [
-    {
-      question: "What should I expect from a coaching session?",
-      answer: "Our coaching sessions are 30-minute focused conversations where we dive deep into your specific challenges. We&apos;ll help you clarify goals, overcome obstacles, and create actionable next steps. Come prepared with questions or specific areas you&apos;d like to work on."
-    },
-    {
-      question: "Do I need a Calendly account?",
-      answer: "No! Scheduling uses Calendly behind the scenes, but you don&apos;t need an account. Just pick a time that works for you, fill out the brief form, and you&apos;ll receive a calendar invite with all the details."
-    },
-    {
-      question: "What if I need to reschedule?",
-      answer: "You can reschedule or cancel your session directly from the calendar invite you receive. We ask for at least 24 hours notice when possible, but we understand that life happens."
-    },
-    {
-      question: "What topics can we cover?",
-      answer: "We can help with goal setting, productivity systems, career transitions, leadership challenges, work-life balance, and more. If you&apos;re not sure if your topic is a good fit, just book a session and we&apos;ll figure it out together."
-    },
-    {
-      question: "How often should I book sessions?",
-      answer: "It depends on your needs! Some members book weekly sessions for ongoing support, others book monthly check-ins, and some book sessions as needed when specific challenges arise. There's no right or wrong frequency."
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSuccess(false);
+
+    if (!topic.trim()) {
+      setError('Please tell us what you would like coaching on.');
+      return;
     }
-  ];
+
+    const user = getCurrentUser();
+    if (!user || !user.id) {
+      setError('You must be logged in to submit a coaching request.');
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const response = await fetch('/api/member/coaching-requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.id,
+          topic: topic.trim(),
+          details: details.trim() || null,
+          preferredDates: preferredDates.trim() || null,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to submit coaching request');
+      }
+
+      setSuccess(true);
+      setTopic('');
+      setDetails('');
+      setPreferredDates('');
+    } catch (err: any) {
+      setError(err.message || 'Failed to submit coaching request');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <MemberLayout>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-4">Book Coaching</h1>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Main Content */}
-        <div className="lg:col-span-2">
-          {calendlyUrl ? (
-            <EmbeddedFrame
-              src={calendlyUrl}
-              title="Schedule Your Coaching Session"
-              fallbackUrl={calendlyUrl}
-            />
-          ) : (
-            <div className="bg-gray-50 rounded-lg p-8 text-center">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                Coaching Scheduling
-              </h3>
-              <p className="text-gray-600 mb-4">
-                Calendly integration is not configured. Please contact support.
-              </p>
-              <a
-                href="mailto:support@lab.com"
-                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                Contact Support
-              </a>
-            </div>
-          )}
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-4">Request Coaching</h1>
+          <p className="text-lg text-gray-600">
+            Fill out the form below to request a coaching session. Our team will follow up with you by email.
+          </p>
         </div>
 
-        {/* Sidebar */}
-        <div className="space-y-6">
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              What to Expect
-            </h3>
-            <div className="space-y-4">
-              <div className="flex items-start space-x-3">
-                <div className="flex-shrink-0 w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center">
-                  <span className="text-blue-600 text-sm font-semibold">1</span>
-                </div>
-                <div>
-                  <h4 className="font-medium text-gray-900">Pick Your Time</h4>
-                  <p className="text-sm text-gray-600">Choose from available 30-minute slots</p>
-                </div>
-              </div>
-              <div className="flex items-start space-x-3">
-                <div className="flex-shrink-0 w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center">
-                  <span className="text-blue-600 text-sm font-semibold">2</span>
-                </div>
-                <div>
-                  <h4 className="font-medium text-gray-900">Fill Out Form</h4>
-                  <p className="text-sm text-gray-600">Tell us what you&apos;d like to work on</p>
-                </div>
-              </div>
-              <div className="flex items-start space-x-3">
-                <div className="flex-shrink-0 w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center">
-                  <span className="text-blue-600 text-sm font-semibold">3</span>
-                </div>
-                <div>
-                  <h4 className="font-medium text-gray-900">Get Calendar Invite</h4>
-                  <p className="text-sm text-gray-600">We&apos;ll send you all the details</p>
-                </div>
-              </div>
-              <div className="flex items-start space-x-3">
-                <div className="flex-shrink-0 w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center">
-                  <span className="text-blue-600 text-sm font-semibold">4</span>
-                </div>
-                <div>
-                  <h4 className="font-medium text-gray-900">Join Session</h4>
-                  <p className="text-sm text-gray-600">Connect via Zoom or phone</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-blue-50 rounded-lg p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              Scheduling Made Simple
-            </h3>
-            <p className="text-blue-800 text-sm">
-              Scheduling uses Calendly behind the scenes; you don&apos;t need an account. 
-              Just pick a time and we&apos;ll handle the rest.
+        {success && (
+          <Card className="mb-6 p-6" style={{ backgroundColor: '#e1ebd9', borderColor: '#c3d7b3', borderWidth: '1px', borderStyle: 'solid' }}>
+            <p className="text-gray-900" style={{ color: '#455933' }}>
+              Your coaching request has been received. Our team will follow up with you by email.
             </p>
-          </div>
-        </div>
-      </div>
+          </Card>
+        )}
 
-      {/* FAQ Section */}
-      <div className="mt-12">
-        <h2 className="text-2xl font-bold text-gray-900 mb-6">Frequently Asked Questions</h2>
-        <div className="space-y-4">
-          {faqs.map((faq, index) => (
-            <Accordion key={index} title={faq.question}>
-              <p>{faq.answer}</p>
-            </Accordion>
-          ))}
-        </div>
-      </div>
+        {error && (
+          <Card className="mb-6 p-6 bg-red-50 border border-red-200">
+            <p className="text-red-800">{error}</p>
+          </Card>
+        )}
+
+        <Card className="p-6">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div>
+              <label htmlFor="topic" className="block text-sm font-medium text-gray-700 mb-2">
+                What would you like coaching on? <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                id="topic"
+                value={topic}
+                onChange={(e) => setTopic(e.target.value)}
+                rows={3}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="e.g., Career transition, Leadership development, Work-life balance..."
+                required
+              />
+            </div>
+
+            <div>
+              <label htmlFor="details" className="block text-sm font-medium text-gray-700 mb-2">
+                Tell us a bit more (optional)
+              </label>
+              <textarea
+                id="details"
+                value={details}
+                onChange={(e) => setDetails(e.target.value)}
+                rows={4}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Any additional context or specific challenges you'd like to discuss..."
+              />
+            </div>
+
+            <div>
+              <label htmlFor="preferredDates" className="block text-sm font-medium text-gray-700 mb-2">
+                Possible dates and times (optional)
+              </label>
+              <textarea
+                id="preferredDates"
+                value={preferredDates}
+                onChange={(e) => setPreferredDates(e.target.value)}
+                rows={2}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="e.g., Weekday mornings, Tuesday afternoons, Any time next week..."
+              />
+            </div>
+
+            <div className="flex justify-end">
+              <Button
+                type="submit"
+                disabled={isLoading}
+                className="px-8 py-2"
+              >
+                {isLoading ? 'Submitting...' : 'Submit Request'}
+              </Button>
+            </div>
+          </form>
+        </Card>
       </div>
     </MemberLayout>
   );

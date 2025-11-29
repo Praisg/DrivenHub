@@ -66,9 +66,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center justify-between">
             <div className="space-y-1">
-              <h1 className="text-2xl font-semibold driven-header">
-                DRIVEN Community Institute: Where personal energy fuels collective impact
+              <h1 className="text-2xl font-bold driven-header">
+                DRIVEN Community Institute:
               </h1>
+              <h2 className="text-xl font-semibold driven-header">
+                Where Personal Energy Fuels Collective Impact
+              </h2>
               <p className="text-base font-medium driven-header opacity-90">
                 Communication Hub
               </p>

@@ -252,21 +252,25 @@ export default function MemberSkillsView({ userId }: MemberSkillsViewProps) {
                       </span>
                     </div>
                   </div>
-                  <div className="bg-gray-200 rounded-full h-4 shadow-inner overflow-hidden">
-                    <div
-                      className={`h-4 rounded-full transition-all duration-500 ease-out shadow-sm ${
-                        skill.status === 'COMPLETED' 
-                          ? 'bg-gradient-to-r from-green-500 to-green-600' 
-                          : skill.adminApproved === false
-                          ? 'bg-gradient-to-r from-red-500 to-red-600'
-                          : 'bg-gradient-to-r from-blue-500 to-blue-600'
-                      }`}
-                      style={{ width: `${skill.progress || 0}%` }}
-                    />
-                  </div>
-                  <p className="text-xs text-gray-500 mt-2 text-center">
-                    {skill.completedCount || 0} of {skill.totalCount || 0} content items completed
-                  </p>
+                  {(skill.totalCount || 0) > 0 && (
+                    <>
+                      <div className="bg-gray-200 rounded-full h-4 shadow-inner overflow-hidden">
+                        <div
+                          className={`h-4 rounded-full transition-all duration-500 ease-out shadow-sm ${
+                            skill.status === 'COMPLETED' 
+                              ? 'bg-gradient-to-r from-green-500 to-green-600' 
+                              : skill.adminApproved === false
+                              ? 'bg-gradient-to-r from-red-500 to-red-600'
+                              : 'bg-gradient-to-r from-blue-500 to-blue-600'
+                          }`}
+                          style={{ width: `${skill.progress || 0}%` }}
+                        />
+                      </div>
+                      <p className="text-xs text-gray-500 mt-2 text-center">
+                        {skill.completedCount || 0} of {skill.totalCount || 0} content items completed
+                      </p>
+                    </>
+                  )}
                 </div>
               )}
             </div>

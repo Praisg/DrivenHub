@@ -212,13 +212,6 @@ export default function Dashboard({ user }: DashboardProps) {
                         <div className="text-sm text-gray-600">Learning materials</div>
                       </div>
                     </Button>
-                    <Button href={user.role === 'admin' ? '/admin/surveys' : '/member/surveys'} className="w-full justify-start h-auto py-4" variant="outline">
-                      <span className="text-2xl mr-3">📊</span>
-                      <div className="text-left">
-                        <div className="font-semibold">Surveys</div>
-                        <div className="text-sm text-gray-600">Share your feedback</div>
-                      </div>
-                    </Button>
                   </div>
                 </Card>
 
@@ -253,18 +246,17 @@ export default function Dashboard({ user }: DashboardProps) {
                 <Card>
                   <h2 className="text-xl font-semibold text-gray-900 mb-4">Upcoming Events</h2>
                   <div className="space-y-4">
-                    {upcomingEvents.slice(0, 3).map((event) => (
-                      <div key={event.id} className="flex items-center space-x-4">
-                        <CalendarIcon className="w-6 h-6 text-blue-500" />
-                        <div className="flex-1">
-                          <h3 className="font-medium text-gray-900">{event.title}</h3>
-                          <p className="text-sm text-gray-600">{event.description}</p>
-                          <p className="text-xs text-gray-500">
-                            {new Date(event.startISO).toLocaleDateString()} at {new Date(event.startISO).toLocaleTimeString()}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
+                    <div className="text-center py-6">
+                      <Button 
+                        href={user.role === 'admin' ? '/admin/events' : '/member/events'}
+                        className="w-full py-3 text-lg"
+                      >
+                        View Upcoming Events
+                      </Button>
+                      <p className="text-sm text-gray-600 mt-3">
+                        See all events you've been invited to in the Events section.
+                      </p>
+                    </div>
                   </div>
                 </Card>
 

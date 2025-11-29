@@ -8,7 +8,8 @@ import {
   BriefcaseIcon, 
   ClipboardDocumentListIcon,
   UserGroupIcon,
-  MegaphoneIcon
+  MegaphoneIcon,
+  AcademicCapIcon
 } from '@heroicons/react/24/outline';
 import { 
   HomeIcon as HomeIconSolid, 
@@ -16,7 +17,8 @@ import {
   BriefcaseIcon as BriefcaseIconSolid, 
   ClipboardDocumentListIcon as ClipboardDocumentListIconSolid,
   UserGroupIcon as UserGroupIconSolid,
-  MegaphoneIcon as MegaphoneIconSolid
+  MegaphoneIcon as MegaphoneIconSolid,
+  AcademicCapIcon as AcademicCapIconSolid
 } from '@heroicons/react/24/solid';
 
 interface NavItem {
@@ -30,6 +32,7 @@ const navigation: NavItem[] = [
   { name: 'Home', href: '/admin/home', icon: HomeIcon, iconSolid: HomeIconSolid },
   { name: 'Announcements', href: '/admin/announcements', icon: MegaphoneIcon, iconSolid: MegaphoneIconSolid },
   { name: 'Events', href: '/admin/events', icon: CalendarIcon, iconSolid: CalendarIconSolid },
+  { name: 'Coaching', href: '/admin/coaching', icon: AcademicCapIcon, iconSolid: AcademicCapIconSolid },
   { name: 'Skills Wallet', href: '/admin/skills-wallet', icon: BriefcaseIcon, iconSolid: BriefcaseIconSolid },
   { name: 'Assignments', href: '/admin/assignments', icon: UserGroupIcon, iconSolid: UserGroupIconSolid },
   { name: 'Surveys', href: '/admin/surveys', icon: ClipboardDocumentListIcon, iconSolid: ClipboardDocumentListIconSolid },
