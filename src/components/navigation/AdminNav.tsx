@@ -6,7 +6,6 @@ import {
   HomeIcon, 
   CalendarIcon, 
   BriefcaseIcon, 
-  ClipboardDocumentListIcon,
   UserGroupIcon,
   MegaphoneIcon,
   AcademicCapIcon
@@ -15,7 +14,6 @@ import {
   HomeIcon as HomeIconSolid, 
   CalendarIcon as CalendarIconSolid, 
   BriefcaseIcon as BriefcaseIconSolid, 
-  ClipboardDocumentListIcon as ClipboardDocumentListIconSolid,
   UserGroupIcon as UserGroupIconSolid,
   MegaphoneIcon as MegaphoneIconSolid,
   AcademicCapIcon as AcademicCapIconSolid
@@ -35,7 +33,6 @@ const navigation: NavItem[] = [
   { name: 'Coaching', href: '/admin/coaching', icon: AcademicCapIcon, iconSolid: AcademicCapIconSolid },
   { name: 'Skills Wallet', href: '/admin/skills-wallet', icon: BriefcaseIcon, iconSolid: BriefcaseIconSolid },
   { name: 'Assignments', href: '/admin/assignments', icon: UserGroupIcon, iconSolid: UserGroupIconSolid },
-  { name: 'Surveys', href: '/admin/surveys', icon: ClipboardDocumentListIcon, iconSolid: ClipboardDocumentListIconSolid },
 ];
 
 export default function AdminNav() {

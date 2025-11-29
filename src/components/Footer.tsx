@@ -1,6 +1,25 @@
+'use client';
+
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { getCurrentUser } from '@/lib/auth';
 
 export default function Footer() {
+  const [coachingHref, setCoachingHref] = useState('/member/coaching');
+
+  useEffect(() => {
+    const user = getCurrentUser();
+    if (user) {
+      if (user.role === 'admin') {
+        setCoachingHref('/admin/coaching');
+      } else {
+        setCoachingHref('/member/coaching');
+      }
+    } else {
+      setCoachingHref('/member/coaching');
+    }
+  }, []);
+
   return (
     <footer className="text-white" style={{ backgroundColor: '#7EA25A' }}>
       <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
@@ -37,7 +56,7 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/coaching" className="hover:text-white transition-colors" style={{ color: '#FCFAF6' }}>
+                <Link href={coachingHref} className="hover:text-white transition-colors" style={{ color: '#FCFAF6' }}>
                   Book Coaching
                 </Link>
               </li>
@@ -52,7 +71,7 @@ export default function Footer() {
             <div className="rounded-lg p-4" style={{ backgroundColor: '#587240' }}>
               <p className="text-sm font-medium mb-2">Ready to get started?</p>
               <Link 
-                href="/coaching" 
+                href={coachingHref}
                 className="bg-white px-4 py-2 rounded-lg font-semibold transition-colors inline-block hover:bg-[#e1ebd9]"
                 style={{ color: '#7EA25A' }}
               >

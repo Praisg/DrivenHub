@@ -198,7 +198,7 @@ export default function Dashboard({ user }: DashboardProps) {
                         <div className="text-sm text-gray-600">View upcoming events</div>
                       </div>
                     </Button>
-                    <Button href={user.role === 'admin' ? '/admin/home' : '/member/coaching'} className="w-full justify-start h-auto py-4" variant="outline">
+                    <Button href={user.role === 'admin' ? '/admin/coaching' : '/member/coaching'} className="w-full justify-start h-auto py-4" variant="outline">
                       <AcademicCapIcon className="w-6 h-6 mr-3" />
                       <div className="text-left">
                         <div className="font-semibold">Book Coaching</div>

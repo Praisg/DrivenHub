@@ -149,8 +149,7 @@ export default function MemberSkillsView({ userId }: MemberSkillsViewProps) {
                 <div className="flex-1">
                   <div className="flex items-center space-x-3 mb-2">
                     <h3 className="font-bold text-xl text-gray-900">{skill.name}</h3>
-                    {/* Show badges only for explicit admin actions: Completed or Rejected */}
-                    {/* New assignments (adminApproved is null/undefined) show no badge */}
+                    {/* Show status badge: Completed or In Progress */}
                     {skill.status === 'COMPLETED' ? (
                       <span className="px-3 py-1 text-xs font-semibold bg-green-100 text-green-800 rounded-full shadow-sm flex items-center">
                         <CheckCircleIconSolid className="w-4 h-4 mr-1" />
@@ -161,7 +160,11 @@ export default function MemberSkillsView({ userId }: MemberSkillsViewProps) {
                         <XCircleIcon className="w-4 h-4 mr-1" />
                         Rejected
                       </span>
-                    ) : null}
+                    ) : (
+                      <span className="px-3 py-1 text-xs font-semibold bg-gray-100 text-gray-800 rounded-full shadow-sm flex items-center">
+                        In Progress
+                      </span>
+                    )}
                   </div>
                   {skill.description && (
                     <p className="text-sm text-gray-600 mt-1 line-clamp-2 leading-relaxed">{skill.description}</p>
@@ -184,73 +187,50 @@ export default function MemberSkillsView({ userId }: MemberSkillsViewProps) {
                 <div>
                   <div className="flex items-center justify-between mb-3">
                     <h4 className="font-semibold text-gray-900">Progress</h4>
-                    <div className="flex items-center space-x-3">
-                      {/* Show only the latest admin decision: Completed takes precedence over Rejected */}
-                      {details.skill.status === 'COMPLETED' ? (
-                        <span className="px-3 py-1 text-xs font-semibold bg-green-100 text-green-800 rounded-full shadow-sm flex items-center">
-                          <CheckCircleIconSolid className="w-4 h-4 mr-1" />
-                          Completed
-                        </span>
-                      ) : details.skill.adminApproved === false ? (
-                        <span className="px-3 py-1 text-xs font-semibold bg-red-100 text-red-800 rounded-full shadow-sm flex items-center">
-                          <XCircleIcon className="w-4 h-4 mr-1" />
-                          Rejected
-                        </span>
-                      ) : null}
-                      <span className={`text-base font-bold ${
-                        details.skill.status === 'COMPLETED' 
-                          ? 'text-green-700' 
-                          : details.skill.adminApproved === false
-                          ? 'text-red-700'
-                          : 'text-gray-900'
-                      }`}>
-                        {details.progress}%
-                      </span>
-                    </div>
+                    <span className={`text-base font-bold ${
+                      details.skill.status === 'COMPLETED' 
+                        ? 'text-green-700' 
+                        : details.skill.adminApproved === false
+                        ? 'text-red-700'
+                        : 'text-gray-900'
+                    }`}>
+                      {details.skill.status === 'COMPLETED' ? 100 : details.progress}%
+                    </span>
                   </div>
-                  <div className="bg-gray-200 rounded-full h-4 shadow-inner overflow-hidden">
-                    <div
-                      className={`h-4 rounded-full transition-all duration-500 ease-out shadow-sm ${
-                        details.skill.status === 'COMPLETED' 
-                          ? 'bg-gradient-to-r from-green-500 to-green-600' 
-                          : details.skill.adminApproved === false
-                          ? 'bg-gradient-to-r from-red-500 to-red-600'
-                          : 'bg-gradient-to-r from-blue-500 to-blue-600'
-                      }`}
-                      style={{ width: `${details.progress}%` }}
-                    />
-                  </div>
-                  <p className="text-xs text-gray-500 mt-2 text-center">
-                    {details.completedCount || 0} of {details.totalCount || 0} content items completed
-                  </p>
+                  {(details.totalCount || 0) > 0 && (
+                    <>
+                      <div className="bg-gray-200 rounded-full h-4 shadow-inner overflow-hidden">
+                        <div
+                          className={`h-4 rounded-full transition-all duration-500 ease-out shadow-sm ${
+                            details.skill.status === 'COMPLETED' 
+                              ? 'bg-gradient-to-r from-green-500 to-green-600' 
+                              : details.skill.adminApproved === false
+                              ? 'bg-gradient-to-r from-red-500 to-red-600'
+                              : 'bg-gradient-to-r from-blue-500 to-blue-600'
+                          }`}
+                          style={{ width: `${details.skill.status === 'COMPLETED' ? 100 : details.progress}%` }}
+                        />
+                      </div>
+                      <p className="text-xs text-gray-500 mt-2 text-center">
+                        {details.completedCount || 0} of {details.totalCount || 0} content items completed
+                      </p>
+                    </>
+                  )}
                 </div>
               ) : (
                 // Show collapsed progress when not expanded (uses skill data)
                 <div>
                   <div className="flex items-center justify-between mb-3">
                     <h4 className="font-semibold text-gray-900">Progress</h4>
-                    <div className="flex items-center space-x-3">
-                      {skill.status === 'COMPLETED' ? (
-                        <span className="px-3 py-1 text-xs font-semibold bg-green-100 text-green-800 rounded-full shadow-sm flex items-center">
-                          <CheckCircleIconSolid className="w-4 h-4 mr-1" />
-                          Completed
-                        </span>
-                      ) : skill.adminApproved === false ? (
-                        <span className="px-3 py-1 text-xs font-semibold bg-red-100 text-red-800 rounded-full shadow-sm flex items-center">
-                          <XCircleIcon className="w-4 h-4 mr-1" />
-                          Rejected
-                        </span>
-                      ) : null}
-                      <span className={`text-base font-bold ${
-                        skill.status === 'COMPLETED' 
-                          ? 'text-green-700' 
-                          : skill.adminApproved === false
-                          ? 'text-red-700'
-                          : 'text-gray-900'
-                      }`}>
-                        {skill.progress || 0}%
-                      </span>
-                    </div>
+                    <span className={`text-base font-bold ${
+                      skill.status === 'COMPLETED' 
+                        ? 'text-green-700' 
+                        : skill.adminApproved === false
+                        ? 'text-red-700'
+                        : 'text-gray-900'
+                    }`}>
+                      {skill.status === 'COMPLETED' ? 100 : (skill.progress || 0)}%
+                    </span>
                   </div>
                   {(skill.totalCount || 0) > 0 && (
                     <>
@@ -263,7 +243,7 @@ export default function MemberSkillsView({ userId }: MemberSkillsViewProps) {
                               ? 'bg-gradient-to-r from-red-500 to-red-600'
                               : 'bg-gradient-to-r from-blue-500 to-blue-600'
                           }`}
-                          style={{ width: `${skill.progress || 0}%` }}
+                          style={{ width: `${skill.status === 'COMPLETED' ? 100 : (skill.progress || 0)}%` }}
                         />
                       </div>
                       <p className="text-xs text-gray-500 mt-2 text-center">
@@ -276,15 +256,15 @@ export default function MemberSkillsView({ userId }: MemberSkillsViewProps) {
             </div>
 
             {isExpanded && details && (
-              <div className="border-t border-gray-200 bg-gradient-to-br from-gray-50 to-white">
+              <div className="border-t border-gray-200 bg-slate-50">
                 <div className="p-6 space-y-6">
                   {/* Full Description Section */}
-                  <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
-                    <h4 className="font-semibold text-gray-900 mb-3 flex items-center">
-                      <span className="w-1 h-5 bg-blue-600 rounded-full mr-2"></span>
+                  <section className="rounded-2xl border border-slate-200 bg-white p-4 md:p-5">
+                    <h3 className="text-sm font-semibold text-slate-900 mb-2 flex items-center gap-2">
+                      <span className="h-4 w-1 rounded-full bg-indigo-500" />
                       Full Description
-                    </h4>
-                    <p className="text-sm text-gray-700 leading-relaxed">
+                    </h3>
+                    <p className="text-sm text-slate-700 leading-relaxed">
                       {details.skill.description || 'No description provided.'}
                     </p>
                     
@@ -295,27 +275,34 @@ export default function MemberSkillsView({ userId }: MemberSkillsViewProps) {
                         <p className="text-sm text-gray-800 italic leading-relaxed">{details.skill.adminNotes}</p>
                       </div>
                     )}
-                  </div>
+                  </section>
 
                   {/* Learning Content Section */}
-                  <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
-                    <h4 className="font-semibold text-gray-900 mb-4 flex items-center">
-                      <span className="w-1 h-5 bg-blue-600 rounded-full mr-2"></span>
-                      Learning Content
-                      <span className="ml-2 px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-600 rounded-full">
-                        {details.contentItems.length}
-                      </span>
-                    </h4>
-                    {details.contentItems.length === 0 ? (
-                      <div className="text-center py-8 text-gray-500">
-                        <p className="text-sm">No content items available for this skill.</p>
+                  <section className="rounded-2xl border border-slate-200 bg-white p-4 md:p-5">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <span className="h-4 w-1 rounded-full bg-indigo-500" />
+                        <h3 className="text-sm font-semibold text-slate-900">
+                          Learning Content
+                        </h3>
+                        {(details.totalCount || 0) > 0 && (
+                          <span className="text-xs rounded-full bg-slate-100 px-2 py-0.5 text-slate-600">
+                            {details.totalCount}
+                          </span>
+                        )}
                       </div>
+                    </div>
+
+                    {(details.totalCount || 0) === 0 ? (
+                      <p className="text-sm text-slate-500">
+                        No learning content has been added yet.
+                      </p>
                     ) : (
                       <div className="space-y-3">
-                        {details.contentItems.map((item, index) => (
+                        {details.contentItems.map((item) => (
                           <div
                             key={item.id}
-                            className={`group flex items-start space-x-4 p-4 rounded-lg border-2 transition-all duration-200 ${
+                            className={`group flex items-start space-x-4 p-4 rounded-lg border transition-all duration-200 ${
                               item.isCompleted
                                 ? 'bg-green-50 border-green-200 shadow-sm'
                                 : 'bg-white border-gray-200 hover:border-blue-300 hover:shadow-md'
@@ -414,7 +401,7 @@ export default function MemberSkillsView({ userId }: MemberSkillsViewProps) {
                         ))}
                       </div>
                     )}
-                  </div>
+                  </section>
                 </div>
               </div>
             )}
