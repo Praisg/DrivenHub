@@ -180,25 +180,37 @@ export default function MemberSkillsView({ userId }: MemberSkillsViewProps) {
               </div>
             </div>
 
-            {/* Progress Bar - Always visible, outside expanded section */}
-            <div className="border-t border-gray-200 bg-white px-5 py-4">
-              {isExpanded && details ? (
-                // Show detailed progress when expanded (uses details data)
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <h4 className="font-semibold text-gray-900">Progress</h4>
-                    <span className={`text-base font-bold ${
-                      details.skill.status === 'COMPLETED' 
-                        ? 'text-green-700' 
-                        : details.skill.adminApproved === false
-                        ? 'text-red-700'
-                        : 'text-gray-900'
-                    }`}>
-                      {details.skill.status === 'COMPLETED' ? 100 : details.progress}%
-                    </span>
-                  </div>
-                  {(details.totalCount || 0) > 0 && (
-                    <>
+            {/* Progress Bar - Show when completed OR has content items */}
+            {(() => {
+              const isCompleted = isExpanded && details 
+                ? details.skill.status === 'COMPLETED'
+                : skill.status === 'COMPLETED';
+              const totalCount = isExpanded && details 
+                ? (details.totalCount || 0)
+                : (skill.totalCount || 0);
+              const shouldShowProgressBar = isCompleted || totalCount > 0;
+
+              if (!shouldShowProgressBar) {
+                return null; // Not completed and no content -> hide progress section
+              }
+
+              return (
+                <div className="border-t border-gray-200 bg-white px-5 py-4">
+                  {isExpanded && details ? (
+                    // Show detailed progress when expanded (uses details data)
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="font-semibold text-gray-900">Progress</h4>
+                        <span className={`text-base font-bold ${
+                          details.skill.status === 'COMPLETED' 
+                            ? 'text-green-700' 
+                            : details.skill.adminApproved === false
+                            ? 'text-red-700'
+                            : 'text-gray-900'
+                        }`}>
+                          {details.skill.status === 'COMPLETED' ? 100 : details.progress}%
+                        </span>
+                      </div>
                       <div className="bg-gray-200 rounded-full h-4 shadow-inner overflow-hidden">
                         <div
                           className={`h-4 rounded-full transition-all duration-500 ease-out shadow-sm ${
@@ -211,31 +223,29 @@ export default function MemberSkillsView({ userId }: MemberSkillsViewProps) {
                           style={{ width: `${details.skill.status === 'COMPLETED' ? 100 : details.progress}%` }}
                         />
                       </div>
-                      <p className="text-xs text-gray-500 mt-2 text-center">
-                        {details.skill.status === 'COMPLETED' 
-                          ? `${details.totalCount || 0} of ${details.totalCount || 0} content items completed`
-                          : `${details.completedCount || 0} of ${details.totalCount || 0} content items completed`}
-                      </p>
-                    </>
-                  )}
-                </div>
-              ) : (
-                // Show collapsed progress when not expanded (uses skill data)
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <h4 className="font-semibold text-gray-900">Progress</h4>
-                    <span className={`text-base font-bold ${
-                      skill.status === 'COMPLETED' 
-                        ? 'text-green-700' 
-                        : skill.adminApproved === false
-                        ? 'text-red-700'
-                        : 'text-gray-900'
-                    }`}>
-                      {skill.status === 'COMPLETED' ? 100 : (skill.progress || 0)}%
-                    </span>
-                  </div>
-                  {(skill.totalCount || 0) > 0 && (
-                    <>
+                      {totalCount > 0 && (
+                        <p className="text-xs text-gray-500 mt-2 text-center">
+                          {details.skill.status === 'COMPLETED' 
+                            ? `${details.totalCount || 0} of ${details.totalCount || 0} content items completed`
+                            : `${details.completedCount || 0} of ${details.totalCount || 0} content items completed`}
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    // Show collapsed progress when not expanded (uses skill data)
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="font-semibold text-gray-900">Progress</h4>
+                        <span className={`text-base font-bold ${
+                          skill.status === 'COMPLETED' 
+                            ? 'text-green-700' 
+                            : skill.adminApproved === false
+                            ? 'text-red-700'
+                            : 'text-gray-900'
+                        }`}>
+                          {skill.status === 'COMPLETED' ? 100 : (skill.progress || 0)}%
+                        </span>
+                      </div>
                       <div className="bg-gray-200 rounded-full h-4 shadow-inner overflow-hidden">
                         <div
                           className={`h-4 rounded-full transition-all duration-500 ease-out shadow-sm ${
@@ -248,16 +258,18 @@ export default function MemberSkillsView({ userId }: MemberSkillsViewProps) {
                           style={{ width: `${skill.status === 'COMPLETED' ? 100 : (skill.progress || 0)}%` }}
                         />
                       </div>
-                      <p className="text-xs text-gray-500 mt-2 text-center">
-                        {skill.status === 'COMPLETED' 
-                          ? `${skill.totalCount || 0} of ${skill.totalCount || 0} content items completed`
-                          : `${skill.completedCount || 0} of ${skill.totalCount || 0} content items completed`}
-                      </p>
-                    </>
+                      {totalCount > 0 && (
+                        <p className="text-xs text-gray-500 mt-2 text-center">
+                          {skill.status === 'COMPLETED' 
+                            ? `${skill.totalCount || 0} of ${skill.totalCount || 0} content items completed`
+                            : `${skill.completedCount || 0} of ${skill.totalCount || 0} content items completed`}
+                        </p>
+                      )}
+                    </div>
                   )}
                 </div>
-              )}
-            </div>
+              );
+            })()}
 
             {isExpanded && details && (
               <div className="border-t border-gray-200 bg-slate-50">
