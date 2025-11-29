@@ -164,18 +164,32 @@ export default function MemberDashboard({ memberId }: MemberDashboardProps) {
     switch (status) {
       case 'assigned': return 'bg-gray-100 text-gray-800';
       case 'learning': return 'bg-blue-100 text-blue-800';
-      case 'completed': return 'bg-green-100 text-green-800';
+      case 'completed': return '';
       case 'mastered': return 'bg-purple-100 text-purple-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
 
+  const getStatusStyle = (status: string) => {
+    if (status === 'completed') {
+      return { backgroundColor: '#e1ebd9', color: '#455933' };
+    }
+    return undefined;
+  };
+
   const getProgressColor = (progress: number) => {
-    if (progress >= 100) return 'bg-green-500';
+    if (progress >= 100) return '';
     if (progress >= 75) return 'bg-blue-500';
     if (progress >= 50) return 'bg-yellow-500';
     if (progress >= 25) return 'bg-orange-500';
     return 'bg-red-500';
+  };
+
+  const getProgressStyle = (progress: number) => {
+    if (progress >= 100) {
+      return { backgroundColor: '#7EA25A' };
+    }
+    return undefined;
   };
 
   if (!member) {
@@ -199,13 +213,16 @@ export default function MemberDashboard({ memberId }: MemberDashboardProps) {
 
       {/* Status Message */}
       {status && (
-        <div className={`mb-6 p-4 rounded-lg ${
-          status.includes('successfully') 
-            ? 'bg-green-50 border border-green-200 text-green-800' 
-            : status.includes('Failed') || status.includes('error')
-            ? 'bg-red-50 border border-red-200 text-red-800'
-            : 'bg-blue-50 border border-blue-200 text-blue-800'
-        }`}>
+        <div 
+          className={`mb-6 p-4 rounded-lg ${
+            status.includes('successfully') 
+              ? ''
+              : status.includes('Failed') || status.includes('error')
+              ? 'bg-red-50 border border-red-200 text-red-800'
+              : 'bg-blue-50 border border-blue-200 text-blue-800'
+          }`}
+          style={status.includes('successfully') ? { backgroundColor: '#e1ebd9', borderColor: '#c3d7b3', borderWidth: '1px', borderStyle: 'solid', color: '#455933' } : undefined}
+        >
           {status}
         </div>
       )}
@@ -254,7 +271,7 @@ export default function MemberDashboard({ memberId }: MemberDashboardProps) {
                     </div>
                   </div>
                   <div className="text-right">
-                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(skill.status)}`}>
+                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(skill.status)}`} style={getStatusStyle(skill.status)}>
                       {skill.status}
                     </span>
                   </div>
@@ -269,7 +286,7 @@ export default function MemberDashboard({ memberId }: MemberDashboardProps) {
                   <div className="w-full bg-gray-200 rounded-full h-3">
                     <div 
                       className={`h-3 rounded-full transition-all duration-300 ${getProgressColor(skill.progress)}`}
-                      style={{ width: `${skill.progress}%` }}
+                      style={{ width: `${skill.progress}%`, ...getProgressStyle(skill.progress) }}
                     />
                   </div>
                 </div>
@@ -297,7 +314,9 @@ export default function MemberDashboard({ memberId }: MemberDashboardProps) {
                         onClick={() => updateProgress(skill.skillId, 100)}
                         disabled={isLoading || skill.progress >= 100}
                         size="sm"
-                        className="bg-green-600 hover:bg-green-700"
+                        style={{ backgroundColor: '#7EA25A' }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#6b8a4d'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#7EA25A'}
                       >
                         Mark Complete
                       </Button>

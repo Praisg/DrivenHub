@@ -35,13 +35,13 @@ export default function MemberDirectory({ members }: MemberDirectoryProps) {
     <Card className="driven-card p-6">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center">
-          <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center mr-3">
-            <span className="text-sm font-semibold text-green-600">👥</span>
+          <div className="w-8 h-8 rounded-full flex items-center justify-center mr-3" style={{ backgroundColor: '#e1ebd9' }}>
+            <span className="text-sm font-semibold" style={{ color: '#7EA25A' }}>👥</span>
           </div>
           <h3 className="text-xl font-semibold driven-heading">Members</h3>
         </div>
         <div className="flex items-center">
-          <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+          <div className="w-2 h-2 rounded-full mr-2" style={{ backgroundColor: '#7EA25A' }}></div>
           <span className="text-sm driven-text-muted">{members.length} online</span>
         </div>
       </div>
@@ -70,17 +70,32 @@ export default function MemberDirectory({ members }: MemberDirectoryProps) {
                     {member.name.charAt(0).toUpperCase()}
                   </span>
                 </div>
-                <div className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-white shadow-sm ${
-                  member.status === 'online' ? 'bg-green-500' :
-                  member.status === 'away' ? 'bg-yellow-500' : 'bg-gray-400'
-                }`} />
+                <div 
+                  className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-white shadow-sm ${
+                    member.status === 'online' ? '' :
+                    member.status === 'away' ? 'bg-yellow-500' : 'bg-gray-400'
+                  }`}
+                  style={member.status === 'online' ? { backgroundColor: '#7EA25A' } : undefined}
+                />
               </div>
               <div>
                 <p className="text-sm font-semibold driven-heading">{member.name}</p>
                 <p className="text-xs driven-text-muted">{member.role}</p>
               </div>
             </div>
-            <Button size="sm" variant="outline" className="text-xs driven-btn-secondary hover:bg-green-50 hover:border-green-300">
+            <Button 
+              size="sm" 
+              variant="outline" 
+              className="text-xs driven-btn-secondary"
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#e1ebd9';
+                e.currentTarget.style.borderColor = '#c3d7b3';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = '';
+                e.currentTarget.style.borderColor = '';
+              }}
+            >
               DM
             </Button>
           </div>

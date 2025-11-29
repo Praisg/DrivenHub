@@ -31,6 +31,18 @@
   --color-driven-purple: var(--driven-purple);
   --color-driven-green: var(--driven-green);
   --font-sans: var(--font-inter);
+  
+  /* Override Tailwind green colors with DRIVEN brand green */
+  --color-green-50: #f0f5ec;
+  --color-green-100: #e1ebd9;
+  --color-green-200: #c3d7b3;
+  --color-green-300: #a5c38d;
+  --color-green-400: #87af67;
+  --color-green-500: #7EA25A;
+  --color-green-600: #6b8a4d;
+  --color-green-700: #587240;
+  --color-green-800: #455933;
+  --color-green-900: #324126;
 }
 
 body {

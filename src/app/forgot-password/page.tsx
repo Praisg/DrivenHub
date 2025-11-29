@@ -49,7 +49,7 @@ export default function ForgotPasswordPage() {
 
         {success ? (
           <div className="space-y-4">
-            <div className="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg">
+            <div className="px-4 py-3 rounded-lg" style={{ backgroundColor: '#e1ebd9', borderColor: '#c3d7b3', borderWidth: '1px', borderStyle: 'solid', color: '#455933' }}>
               <p className="text-sm">
                 If an account exists with that email, we've sent a password reset link. 
                 Please check your email and click the link to reset your password.

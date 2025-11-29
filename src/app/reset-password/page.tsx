@@ -91,8 +91,8 @@ function ResetPasswordForm() {
         <Card className="w-full max-w-md">
           <div className="text-center">
             <div className="mb-4">
-              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100">
-                <svg className="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full" style={{ backgroundColor: '#e1ebd9' }}>
+                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ color: '#7EA25A' }}>
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </div>

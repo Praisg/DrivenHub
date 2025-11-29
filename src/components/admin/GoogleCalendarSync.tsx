@@ -242,8 +242,8 @@ export default function GoogleCalendarSync({ onSyncComplete }: GoogleCalendarSyn
       )}
 
       {success && (
-        <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-          <p className="text-green-800 text-sm">{success}</p>
+        <div className="mb-4 p-4 rounded-lg" style={{ backgroundColor: '#e1ebd9', borderColor: '#c3d7b3', borderWidth: '1px', borderStyle: 'solid' }}>
+          <p className="text-sm" style={{ color: '#455933' }}>{success}</p>
         </div>
       )}
 
@@ -256,7 +256,7 @@ export default function GoogleCalendarSync({ onSyncComplete }: GoogleCalendarSyn
               {isConnected ? 'Connected to Google Calendar' : 'Not connected'}
             </p>
           </div>
-          <div className={`h-3 w-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-gray-400'}`}></div>
+          <div className={`h-3 w-3 rounded-full ${isConnected ? '' : 'bg-gray-400'}`} style={isConnected ? { backgroundColor: '#7EA25A' } : {}}></div>
         </div>
       </div>
 

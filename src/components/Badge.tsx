@@ -17,9 +17,13 @@ export default function Badge({
   
   const variantClasses = {
     default: 'bg-gray-100 text-gray-800',
-    success: 'bg-green-100 text-green-800',
+    success: '',
     warning: 'bg-yellow-100 text-yellow-800',
     error: 'bg-red-100 text-red-800',
+  };
+  
+  const variantStyles = {
+    success: { backgroundColor: '#e1ebd9', color: '#455933' },
   };
   
   const sizeClasses = {
@@ -28,9 +32,10 @@ export default function Badge({
   };
   
   const classes = `${baseClasses} ${variantClasses[variant]} ${sizeClasses[size]} ${className}`;
+  const style = variant === 'success' ? variantStyles.success : undefined;
   
   return (
-    <span className={classes}>
+    <span className={classes} style={style}>
       {children}
     </span>
   );

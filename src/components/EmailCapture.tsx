@@ -68,7 +68,7 @@ export default function EmailCapture() {
         </Button>
         
         {status === 'success' && (
-          <p className="text-green-600 text-sm">
+          <p className="text-sm" style={{ color: '#7EA25A' }}>
             Thanks! You&apos;re now subscribed to updates.
           </p>
         )}
