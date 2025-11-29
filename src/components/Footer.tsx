@@ -53,10 +53,8 @@ export default function Footer() {
               <p className="text-sm font-medium mb-2">Ready to get started?</p>
               <Link 
                 href="/coaching" 
-                className="bg-white px-4 py-2 rounded-lg font-semibold transition-colors inline-block"
+                className="bg-white px-4 py-2 rounded-lg font-semibold transition-colors inline-block hover:bg-[#e1ebd9]"
                 style={{ color: '#7EA25A' }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#e1ebd9'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
               >
                 Book a Consultation
               </Link>

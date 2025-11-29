@@ -86,15 +86,7 @@ export default function MemberDirectory({ members }: MemberDirectoryProps) {
             <Button 
               size="sm" 
               variant="outline" 
-              className="text-xs driven-btn-secondary"
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#e1ebd9';
-                e.currentTarget.style.borderColor = '#c3d7b3';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = '';
-                e.currentTarget.style.borderColor = '';
-              }}
+              className="text-xs driven-btn-secondary hover:!bg-[#e1ebd9] hover:!border-[#c3d7b3]"
             >
               DM
             </Button>

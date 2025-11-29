@@ -314,9 +314,8 @@ export default function MemberDashboard({ memberId }: MemberDashboardProps) {
                         onClick={() => updateProgress(skill.skillId, 100)}
                         disabled={isLoading || skill.progress >= 100}
                         size="sm"
+                        className="hover:!bg-[#6b8a4d]"
                         style={{ backgroundColor: '#7EA25A' }}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#6b8a4d'}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#7EA25A'}
                       >
                         Mark Complete
                       </Button>
