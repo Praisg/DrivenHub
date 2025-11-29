@@ -15,7 +15,7 @@ interface Member {
   assigned_skills?: any[];
 }
 
-export default function ManageMembersPage() {
+export default function AdminMembersPage() {
   const [members, setMembers] = useState<Member[]>([]);
   const [filteredMembers, setFilteredMembers] = useState<Member[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -123,16 +123,21 @@ export default function ManageMembersPage() {
         throw new Error('No members selected');
       }
 
+      const user = getCurrentUser();
+      if (!user || !user.id) {
+        throw new Error('You must be logged in to delete members');
+      }
+
       // Use bulk delete endpoint for multiple, single delete for one
       const endpoint =
         idsToDelete.length === 1
-          ? `/api/admin/members/${idsToDelete[0]}`
+          ? `/api/admin/members/${idsToDelete[0]}?adminUserId=${encodeURIComponent(user.id)}`
           : '/api/admin/members/bulk-delete';
 
       const response = await fetch(endpoint, {
         method: idsToDelete.length === 1 ? 'DELETE' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: idsToDelete.length === 1 ? undefined : JSON.stringify({ ids: idsToDelete }),
+        body: idsToDelete.length === 1 ? undefined : JSON.stringify({ ids: idsToDelete, adminUserId: user.id }),
       });
 
       if (!response.ok) {

@@ -5,13 +5,10 @@ import AdminLayout from '@/components/layouts/AdminLayout';
 import SkillCreation from '@/components/admin/SkillCreation';
 import SkillManagement from '@/components/admin/SkillManagement';
 import MemberSkillsManagement from '@/components/admin/MemberSkillsManagement';
-import { Button } from '@/components';
 import { getCurrentUser } from '@/lib/auth';
-import { useRouter } from 'next/navigation';
 
 export default function AdminSkillsWalletPage() {
   const [activeTab, setActiveTab] = useState<'create-skills' | 'manage-skills' | 'member-skills'>('create-skills');
-  const router = useRouter();
 
   return (
     <AdminLayout>
@@ -75,22 +72,11 @@ export default function AdminSkillsWalletPage() {
         )}
 
         {activeTab === 'member-skills' && (
-          <div>
-            <div className="mb-4 flex justify-end">
-              <Button
-                onClick={() => router.push('/admin/members/manage')}
-                variant="outline"
-                className="border-red-300 text-red-700 hover:bg-red-50"
-              >
-                Remove & Manage Members
-              </Button>
-            </div>
-            <MemberSkillsManagement 
-              onUpdate={() => {
-                // Member skills will refresh automatically
-              }}
-            />
-          </div>
+          <MemberSkillsManagement 
+            onUpdate={() => {
+              // Member skills will refresh automatically
+            }}
+          />
         )}
       </div>
     </AdminLayout>

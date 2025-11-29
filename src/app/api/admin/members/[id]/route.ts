@@ -12,10 +12,52 @@ export async function DELETE(
 ) {
   try {
     const { id } = params;
+    const searchParams = req.nextUrl.searchParams;
+    const adminUserId = searchParams.get('adminUserId');
+
+    if (!adminUserId) {
+      return NextResponse.json(
+        { error: 'Admin user ID is required. Please ensure you are logged in.' },
+        { status: 400 }
+      );
+    }
+
     const supabase = getSupabase();
 
+    // Verify admin user is actually an admin
+    const { data: admin, error: adminError } = await supabase
+      .from('members')
+      .select('id, role')
+      .eq('id', adminUserId)
+      .single();
+
+    if (adminError || !admin) {
+      return NextResponse.json(
+        { error: 'Admin user not found' },
+        { status: 404 }
+      );
+    }
+
+    if (admin.role !== 'admin') {
+      return NextResponse.json(
+        { error: 'Admin access required' },
+        { status: 403 }
+      );
+    }
+
     // Delete related data first (cascade should handle most, but we'll be explicit)
+    // Order matters: delete child records before parent to avoid foreign key issues
     
+    // Delete password reset tokens
+    try {
+      await supabase
+        .from('password_reset_tokens')
+        .delete()
+        .eq('user_id', id);
+    } catch (err) {
+      console.warn('Error deleting password reset tokens (table may not exist):', err);
+    }
+
     // Delete coaching requests
     await supabase
       .from('coaching_requests')
@@ -41,7 +83,18 @@ export async function DELETE(
         .delete()
         .eq('user_id', id);
     } catch (err) {
-      // Table might not exist, that's okay
+      console.warn('Error deleting user_events (table may not exist):', err);
+    }
+
+    // Delete google_oauth_tokens (if exists and has user_id)
+    try {
+      await supabase
+        .from('google_oauth_tokens')
+        .delete()
+        .eq('user_id', id);
+    } catch (err) {
+      // Table might not exist or column name might be different, that's okay
+      console.warn('Error deleting google_oauth_tokens (table may not exist or have different schema):', err);
     }
 
     // Finally, delete the member
