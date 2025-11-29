@@ -140,12 +140,26 @@ export async function GET(
       completedCount = totalCount;
     }
     
+    // Determine if skill is completed by admin
+    const isCompleted = assignmentStatus === 'COMPLETED' && !isRejected;
+    
     // Calculate progress: Priority - Rejection (0%) > Completion (100%) > Calculated
-    const progress = isRejected
-      ? 0
-      : assignmentStatus === 'COMPLETED' 
-      ? 100 
-      : (totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0);
+    let progress: number;
+    let effectiveCompletedCount: number;
+    
+    if (isRejected) {
+      progress = 0;
+      effectiveCompletedCount = 0;
+    } else if (isCompleted) {
+      // Admin-completed override: treat everything as done
+      progress = 100;
+      effectiveCompletedCount = totalCount; // All items considered completed
+    } else {
+      progress = totalCount > 0 
+        ? Math.round((completedCount / totalCount) * 100) 
+        : 0;
+      effectiveCompletedCount = completedCount;
+    }
 
     return NextResponse.json({
       skill: {
@@ -153,10 +167,11 @@ export async function GET(
         adminApproved: memberSkillAssignment?.admin_approved,
         adminNotes: memberSkillAssignment?.admin_notes,
         status: assignmentStatus,
+        isCompleted: isCompleted, // Add explicit flag for UI
       },
       contentItems: finalContentItems,
       progress,
-      completedCount,
+      completedCount: effectiveCompletedCount,
       totalCount,
     });
   } catch (err: any) {

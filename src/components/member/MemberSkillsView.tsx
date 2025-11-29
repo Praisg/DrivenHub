@@ -212,7 +212,9 @@ export default function MemberSkillsView({ userId }: MemberSkillsViewProps) {
                         />
                       </div>
                       <p className="text-xs text-gray-500 mt-2 text-center">
-                        {details.completedCount || 0} of {details.totalCount || 0} content items completed
+                        {details.skill.status === 'COMPLETED' 
+                          ? `${details.totalCount || 0} of ${details.totalCount || 0} content items completed`
+                          : `${details.completedCount || 0} of ${details.totalCount || 0} content items completed`}
                       </p>
                     </>
                   )}
@@ -247,7 +249,9 @@ export default function MemberSkillsView({ userId }: MemberSkillsViewProps) {
                         />
                       </div>
                       <p className="text-xs text-gray-500 mt-2 text-center">
-                        {skill.completedCount || 0} of {skill.totalCount || 0} content items completed
+                        {skill.status === 'COMPLETED' 
+                          ? `${skill.totalCount || 0} of ${skill.totalCount || 0} content items completed`
+                          : `${skill.completedCount || 0} of ${skill.totalCount || 0} content items completed`}
                       </p>
                     </>
                   )}

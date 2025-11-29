@@ -83,7 +83,13 @@ export default function MemberLayout({ children }: MemberLayoutProps) {
               </p>
             </div>
             <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-300 capitalize">Member</span>
+              <span className="text-sm" style={{ color: '#FCFAF6', opacity: 0.9 }}>
+                {user.name 
+                  ? `Member · ${user.name}` 
+                  : user.email 
+                  ? `Member · ${user.email}` 
+                  : 'Member'}
+              </span>
               <Button onClick={handleLogout} variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20">
                 Logout
               </Button>

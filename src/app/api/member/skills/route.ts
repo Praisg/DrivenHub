@@ -101,30 +101,41 @@ export async function GET(req: NextRequest) {
         // Debug logging (can remove later)
         console.log(`Skill "${skill.name}" (${skill.id}): status="${assignmentStatus}", isRejected=${isRejected}, adminApproved=${memberSkillAssignment?.admin_approved}, calculatedProgress=${progress}, totalCount=${totalCount}, completedCount=${completedCount}`);
         
+        // Determine if skill is completed by admin
+        const isCompleted = assignmentStatus === 'COMPLETED' && !isRejected;
+        
         // Priority: Rejection overrides completion
         // If admin rejected, force progress to 0% regardless of status
         // If admin marked as COMPLETED (and not rejected), force progress to 100%
         // Otherwise use calculated progress
-        const finalProgress = isRejected 
-          ? 0  // Rejection takes priority - always show 0%
-          : assignmentStatus === 'COMPLETED' 
-          ? 100 
-          : progress;
+        let finalProgress: number;
+        let effectiveCompletedCount: number;
+        
+        if (isRejected) {
+          // Rejection takes priority - always show 0%
+          finalProgress = 0;
+          effectiveCompletedCount = 0;
+        } else if (isCompleted) {
+          // Admin-completed override: treat everything as done
+          finalProgress = 100;
+          effectiveCompletedCount = totalCount; // All items considered completed
+        } else {
+          // Use calculated progress based on content completion
+          finalProgress = totalCount > 0
+            ? Math.round((completedCount / totalCount) * 100)
+            : 0;
+          effectiveCompletedCount = completedCount;
+        }
 
         return {
           ...skill,
           progress: finalProgress,
-          // Priority: Rejection overrides completion
-          // If rejected, reset to 0; if completed (and not rejected), all items done; otherwise use calculated count
-          completedCount: isRejected 
-            ? 0 
-            : assignmentStatus === 'COMPLETED' 
-            ? totalCount 
-            : completedCount,
+          completedCount: effectiveCompletedCount,
           totalCount: totalCount || 0,
           adminApproved: memberSkillAssignment?.admin_approved,
           adminNotes: memberSkillAssignment?.admin_notes,
           status: assignmentStatus,
+          isCompleted: isCompleted, // Add explicit flag for UI
         };
       })
     );

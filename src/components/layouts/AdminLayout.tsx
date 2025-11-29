@@ -77,7 +77,13 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               </p>
             </div>
             <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-300 capitalize">Admin</span>
+              <span className="text-sm" style={{ color: '#FCFAF6', opacity: 0.9 }}>
+                {user.name 
+                  ? `Admin · ${user.name}` 
+                  : user.email 
+                  ? `Admin · ${user.email}` 
+                  : 'Admin'}
+              </span>
               <Button onClick={handleLogout} variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20">
                 Logout
               </Button>
