@@ -1,8 +1,14 @@
 /**
- * Email service for sending emails
- * Currently logs emails to console (for development)
- * TODO: Integrate with Resend, SendGrid, or another email service for production
+ * Email service for sending emails via Resend
+ * 
+ * Required environment variables for production:
+ * - RESEND_API_KEY: Your Resend API key (get from https://resend.com/api-keys)
+ * - EMAIL_FROM: The sender email address, e.g., "DRIVEN Institute <no-reply@driven.com>"
+ * 
+ * In development or when env vars are missing, emails are logged to console instead.
  */
+
+import { Resend } from 'resend';
 
 interface EmailOptions {
   to: string;
@@ -12,55 +18,65 @@ interface EmailOptions {
 }
 
 /**
- * Send an email
- * In production, this should integrate with an email service provider
+ * Send an email via Resend (production) or log to console (development/fallback)
  */
 export async function sendEmail(options: EmailOptions): Promise<void> {
   const { to, subject, html, text } = options;
 
-  // In development, log the email
-  if (process.env.NODE_ENV === 'development') {
-    console.log('='.repeat(60));
-    console.log('📧 EMAIL (Development Mode)');
-    console.log('='.repeat(60));
-    console.log(`To: ${to}`);
-    console.log(`Subject: ${subject}`);
-    console.log('---');
-    if (html) {
-      console.log('HTML Body:');
-      console.log(html);
-    }
-    if (text) {
-      console.log('Text Body:');
-      console.log(text);
-    }
-    console.log('='.repeat(60));
-    return;
-  }
+  // Check for required environment variables
+  const apiKey = process.env.RESEND_API_KEY;
+  const from = process.env.EMAIL_FROM;
 
-  // In production, integrate with email service
-  // Example with Resend:
-  /*
-  const RESEND_API_KEY = process.env.RESEND_API_KEY;
-  if (!RESEND_API_KEY) {
-    throw new Error('RESEND_API_KEY environment variable is not set');
-  }
-
-  const resend = new Resend(RESEND_API_KEY);
-  
-  await resend.emails.send({
-    from: 'noreply@yourdomain.com',
-    to: [to],
-    subject,
-    html: html || text,
-    text: text || html?.replace(/<[^>]*>/g, ''),
-  });
-  */
-
-  // For now, log in production too (remove this and implement actual email sending)
+  // Log email details (useful for debugging)
   console.log(`[EMAIL] Would send to ${to}: ${subject}`);
   if (html) {
     console.log(`[EMAIL] Body: ${html.substring(0, 200)}...`);
+  }
+
+  // If missing required config, log warning and return (fallback mode)
+  if (!apiKey || !from) {
+    console.warn(
+      `[EMAIL] Missing RESEND_API_KEY or EMAIL_FROM; not sending real email. ` +
+      `Set these environment variables in production to enable email sending.`
+    );
+    
+    // In development, show full email details
+    if (process.env.NODE_ENV === 'development') {
+      console.log('='.repeat(60));
+      console.log('📧 EMAIL (Development Mode - No API Key)');
+      console.log('='.repeat(60));
+      console.log(`To: ${to}`);
+      console.log(`Subject: ${subject}`);
+      console.log('---');
+      if (html) {
+        console.log('HTML Body:');
+        console.log(html);
+      }
+      if (text) {
+        console.log('Text Body:');
+        console.log(text);
+      }
+      console.log('='.repeat(60));
+    }
+    return;
+  }
+
+  // Send real email via Resend
+  try {
+    const resend = new Resend(apiKey);
+    
+    const result = await resend.emails.send({
+      from,
+      to: [to],
+      subject,
+      html: html || text,
+      text: text || (html ? html.replace(/<[^>]*>/g, '') : undefined),
+    });
+
+    console.log(`[EMAIL] Successfully sent to ${to} (ID: ${result.data?.id || 'unknown'})`);
+  } catch (error: any) {
+    console.error(`[EMAIL] Failed to send email to ${to}:`, error);
+    throw error; // Re-throw so caller can handle if needed
   }
 }
 

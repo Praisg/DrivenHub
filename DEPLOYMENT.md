@@ -71,7 +71,17 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
 
 # App Configuration
 NEXT_PUBLIC_APP_URL=https://your-app.vercel.app
+
+# Email Service (Resend) - Required for password reset emails
+RESEND_API_KEY=re_your_resend_api_key_here
+EMAIL_FROM="DRIVEN Institute <no-reply@driven.com>"
 ```
+
+**Email Configuration:**
+- Get your Resend API key from [https://resend.com/api-keys](https://resend.com/api-keys)
+- Set `EMAIL_FROM` to your verified sender email address in Resend
+- Format: `"Display Name <email@domain.com>"` or just `"email@domain.com"`
+- Without these variables, emails will be logged to console instead of being sent
 
 ## 📱 Access Points
 
@@ -105,9 +115,11 @@ NEXT_PUBLIC_APP_URL=https://your-app.vercel.app
 - [ ] Deploy to Vercel
 - [ ] Set up Supabase database
 - [ ] Run SQL setup script
-- [ ] Add environment variables
+- [ ] Add environment variables (including email config)
+- [ ] Set up Resend account and verify sender domain
 - [ ] Test admin login
 - [ ] Test member registration
+- [ ] Test password reset email flow
 - [ ] Test skill assignment flow
 - [ ] Verify member can see assigned skills
 - [ ] Set up custom domain (optional)
@@ -127,6 +139,8 @@ NEXT_PUBLIC_APP_URL=https://your-app.vercel.app
 - ✅ Real-time subscriptions
 
 **Total Cost: $0/month** for small to medium usage!
+
+
 
 
 
