@@ -32,9 +32,6 @@ export default function LandingPage() {
               <p className="text-lg mt-2 driven-header">Connect, grow, and support each other</p>
             </div>
             <div className="flex items-center space-x-4">
-              <Button href="/admin/login" variant="outline" className="mr-2">
-                Admin Login
-              </Button>
               <Button href="/register" variant="outline" className="mr-2">
                 Register
               </Button>
