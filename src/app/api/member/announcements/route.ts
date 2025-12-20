@@ -16,7 +16,8 @@ export async function GET(req: NextRequest) {
     const { data, error } = await supabase
       .from('announcements')
       .select('id, title, body, published_at')
-      .order('published_at', { ascending: false })
+      .order('order_index', { ascending: true })
+      .order('created_at', { ascending: false })
       .limit(limit);
 
     if (error) {

@@ -24,7 +24,8 @@ export async function GET(req: NextRequest) {
           email
         )
       `)
-      .order('published_at', { ascending: false });
+      .order('order_index', { ascending: true })
+      .order('created_at', { ascending: false });
 
     if (error) {
       throw new Error(`Failed to fetch announcements: ${error.message}`);
