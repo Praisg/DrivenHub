@@ -29,8 +29,12 @@ WHERE a.id = oa.id;
 -- Drop the existing overly permissive policy
 DROP POLICY IF EXISTS "Allow all to manage announcements" ON announcements;
 
+-- Drop policies if they exist (to allow re-running this migration)
+DROP POLICY IF EXISTS "Allow all to view announcements" ON announcements;
+DROP POLICY IF EXISTS "Allow admin operations via API" ON announcements;
+
 -- Allow all to SELECT (view announcements) - members need to see them
-CREATE POLICY IF NOT EXISTS "Allow all to view announcements"
+CREATE POLICY "Allow all to view announcements"
   ON announcements
   FOR SELECT
   USING (true);
@@ -38,7 +42,7 @@ CREATE POLICY IF NOT EXISTS "Allow all to view announcements"
 -- Allow all operations - admin checks enforced in API routes
 -- This maintains compatibility with the current auth system
 -- API routes verify admin status before allowing updates
-CREATE POLICY IF NOT EXISTS "Allow admin operations via API"
+CREATE POLICY "Allow admin operations via API"
   ON announcements
   FOR ALL
   USING (true)
