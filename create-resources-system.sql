@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS resource_categories (
 );
 
 -- Create resources table
+-- Simplified schema: category_id is optional, can be null
 CREATE TABLE IF NOT EXISTS resources (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   title TEXT NOT NULL,
@@ -24,6 +25,9 @@ CREATE TABLE IF NOT EXISTS resources (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- Note: category_id can be NULL - categories are optional
+-- If resource_categories table doesn't exist yet, that's OK - category_id will just be NULL
 
 -- Create resource_assignments table (for selected visibility)
 CREATE TABLE IF NOT EXISTS resource_assignments (

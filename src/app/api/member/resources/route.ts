@@ -13,17 +13,10 @@ export async function GET(req: NextRequest) {
 
     const supabase = getSupabase();
 
-    // Build query for accessible resources
+    // Simplified query - just get resources without category join for now
     let query = supabase
       .from('resources')
-      .select(`
-        *,
-        category:resource_categories (
-          id,
-          name,
-          sort_order
-        )
-      `);
+      .select('*');
 
     // Filter by category if provided
     if (categoryId) {
@@ -36,32 +29,19 @@ export async function GET(req: NextRequest) {
       .order('created_at', { ascending: false });
 
     if (allError) {
-      throw new Error(`Failed to fetch resources: ${allError.message}`);
+      console.error('Get member resources error details:', {
+        message: allError.message,
+        code: allError.code,
+        details: allError.details,
+        hint: allError.hint,
+      });
+      throw new Error(`Failed to fetch resources: ${allError.message} (Code: ${allError.code || 'unknown'})`);
     }
 
     // If user is logged in, also get resources assigned to them
+    // Skip for now - keep it simple until basic create/read works
     let assignedResources: any[] = [];
-    if (userId) {
-      const { data: assignments, error: assignmentsError } = await supabase
-        .from('resource_assignments')
-        .select(`
-          resource:resources!resource_assignments_resource_id_fkey (
-            *,
-            category:resource_categories (
-              id,
-              name,
-              sort_order
-            )
-          )
-        `)
-        .eq('member_id', userId);
-
-      if (!assignmentsError && assignments) {
-        assignedResources = assignments
-          .map((a: any) => a.resource)
-          .filter(Boolean);
-      }
-    }
+    // TODO: Add selected member assignments later
 
     // Combine and deduplicate resources
     const resourceMap = new Map();

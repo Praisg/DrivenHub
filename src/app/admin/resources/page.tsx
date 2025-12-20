@@ -6,8 +6,7 @@ import ConfirmDialog from '@/components/admin/ConfirmDialog';
 import { Button } from '@/components';
 import { getCurrentUser } from '@/lib/auth';
 import ResourceCard from '@/components/ResourceCard';
-import { PlusIcon, PencilIcon, TrashIcon, XMarkIcon } from '@heroicons/react/24/outline';
-import { getProviderIcon } from '@/lib/resources';
+import { PlusIcon, PencilIcon, TrashIcon, XMarkIcon, ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/outline';
 
 interface Resource {
   id: string;
@@ -32,16 +31,10 @@ interface Category {
   sort_order: number;
 }
 
-interface Member {
-  id: string;
-  name: string;
-  email: string;
-}
 
 export default function AdminResourcesPage() {
   const [resources, setResources] = useState<Resource[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [members, setMembers] = useState<Member[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
@@ -60,9 +53,9 @@ export default function AdminResourcesPage() {
   const [formCategoryId, setFormCategoryId] = useState<string>('');
   const [formCoverImageUrl, setFormCoverImageUrl] = useState('');
   const [formVisibility, setFormVisibility] = useState<'all' | 'selected'>('all');
-  const [formSelectedMemberIds, setFormSelectedMemberIds] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
-  const [newCategoryName, setNewCategoryName] = useState('');
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [formErrors, setFormErrors] = useState<{ title?: string; url?: string }>({});
 
   useEffect(() => {
     fetchData();
@@ -73,26 +66,32 @@ export default function AdminResourcesPage() {
       setIsLoading(true);
       setError(null);
 
-      const [resourcesRes, categoriesRes, membersRes] = await Promise.all([
-        fetch('/api/admin/resources'),
-        fetch('/api/admin/resource-categories'),
-        fetch('/api/admin/members'),
-      ]);
-
-      if (!resourcesRes.ok) throw new Error('Failed to fetch resources');
-      if (!categoriesRes.ok) throw new Error('Failed to fetch categories');
-      if (!membersRes.ok) throw new Error('Failed to fetch members');
-
+      // Fetch resources first (required)
+      const resourcesRes = await fetch('/api/admin/resources');
+      if (!resourcesRes.ok) {
+        const errorData = await resourcesRes.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to fetch resources (${resourcesRes.status})`);
+      }
       const resourcesData = await resourcesRes.json();
-      const categoriesData = await categoriesRes.json();
-      const membersData = await membersRes.json();
-
       setResources(resourcesData.resources || []);
-      setCategories(categoriesData.categories || []);
-      setMembers((membersData.members || []).filter((m: Member) => m.role === 'member'));
+
+      // Fetch categories (optional - don't fail if this fails)
+      try {
+        const categoriesRes = await fetch('/api/admin/resource-categories');
+        if (categoriesRes.ok) {
+          const categoriesData = await categoriesRes.json();
+          setCategories(categoriesData.categories || []);
+        }
+      } catch (catErr) {
+        console.warn('Failed to fetch categories (optional):', catErr);
+        // Continue without categories
+      }
     } catch (err: any) {
-      console.error('Error fetching data:', err);
-      setError(err.message || 'Failed to load data');
+      console.error('Error fetching data:', {
+        message: err.message,
+        error: err,
+      });
+      setError(err.message || 'Failed to load resources. Check console for details.');
     } finally {
       setIsLoading(false);
     }
@@ -106,30 +105,24 @@ export default function AdminResourcesPage() {
     setFormCategoryId('');
     setFormCoverImageUrl('');
     setFormVisibility('all');
-    setFormSelectedMemberIds([]);
+    setShowAdvanced(false);
+    setFormErrors({});
+    setError(null);
     setShowModal(true);
   };
 
   const handleEdit = async (resource: Resource) => {
-    // Fetch full resource details including assigned members
-    try {
-      const res = await fetch(`/api/admin/resources/${resource.id}`);
-      if (res.ok) {
-        const data = await res.json();
-        const fullResource = data.resource;
-        setEditingResource(fullResource);
-        setFormTitle(fullResource.title);
-        setFormDescription(fullResource.description || '');
-        setFormUrl(fullResource.url);
-        setFormCategoryId(fullResource.category_id || '');
-        setFormCoverImageUrl(fullResource.cover_image_url || '');
-        setFormVisibility(fullResource.visibility);
-        setFormSelectedMemberIds(fullResource.assignedMembers?.map((m: Member) => m.id) || []);
-        setShowModal(true);
-      }
-    } catch (err) {
-      console.error('Error fetching resource:', err);
-    }
+    setEditingResource(resource);
+    setFormTitle(resource.title);
+    setFormDescription(resource.description || '');
+    setFormUrl(resource.url);
+    setFormCategoryId(resource.category_id || '');
+    setFormCoverImageUrl(resource.cover_image_url || '');
+    setFormVisibility(resource.visibility);
+    setShowAdvanced(false);
+    setFormErrors({});
+    setError(null);
+    setShowModal(true);
   };
 
   const handleDelete = (id: string, title: string) => {
@@ -159,15 +152,32 @@ export default function AdminResourcesPage() {
     }
   };
 
+  const validateForm = (): boolean => {
+    const errors: { title?: string; url?: string } = {};
+    
+    if (!formTitle.trim()) {
+      errors.title = 'Title is required';
+    }
+    
+    if (!formUrl.trim()) {
+      errors.url = 'URL is required';
+    } else if (!formUrl.startsWith('http://') && !formUrl.startsWith('https://')) {
+      errors.url = 'URL must start with http:// or https://';
+    }
+    
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const handleSave = async () => {
-    if (!formTitle || !formUrl || !user?.id) {
-      setError('Title and URL are required');
+    if (!validateForm() || !user?.id) {
       return;
     }
 
     try {
       setIsSaving(true);
       setError(null);
+      setFormErrors({});
 
       const url = editingResource
         ? `/api/admin/resources/${editingResource.id}`
@@ -179,64 +189,33 @@ export default function AdminResourcesPage() {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          title: formTitle,
-          description: formDescription || null,
-          url: formUrl,
+          title: formTitle.trim(),
+          description: formDescription.trim() || null,
+          url: formUrl.trim(),
           categoryId: formCategoryId || null,
-          coverImageUrl: formCoverImageUrl || null,
+          coverImageUrl: formCoverImageUrl.trim() || null,
           visibility: formVisibility,
-          selectedMemberIds: formVisibility === 'selected' ? formSelectedMemberIds : [],
           userId: user.id,
         }),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to save resource');
+        const errorMessage = errorData.error || 'Failed to save resource';
+        throw new Error(errorMessage);
       }
 
       setShowModal(false);
-      fetchData();
+      await fetchData();
     } catch (err: any) {
-      setError(`Failed to save resource: ${err.message}`);
+      const errorMessage = err.message || 'Failed to save resource';
+      setError(errorMessage);
+      console.error('Save resource error:', err);
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleCreateCategory = async () => {
-    if (!newCategoryName || !user?.id) return;
-
-    try {
-      const response = await fetch('/api/admin/resource-categories', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: newCategoryName,
-          userId: user.id,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to create category');
-      }
-
-      const data = await response.json();
-      setCategories([...categories, data.category]);
-      setFormCategoryId(data.category.id);
-      setNewCategoryName('');
-    } catch (err: any) {
-      setError(`Failed to create category: ${err.message}`);
-    }
-  };
-
-  const toggleMemberSelection = (memberId: string) => {
-    setFormSelectedMemberIds((prev) =>
-      prev.includes(memberId)
-        ? prev.filter((id) => id !== memberId)
-        : [...prev, memberId]
-    );
-  };
 
   // Filter resources
   const filteredResources = resources.filter((resource) => {
@@ -351,6 +330,7 @@ export default function AdminResourcesPage() {
               </div>
 
               <div className="p-6 space-y-4">
+                {/* Basic Fields - Always Visible */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Title *
@@ -358,31 +338,48 @@ export default function AdminResourcesPage() {
                   <input
                     type="text"
                     value={formTitle}
-                    onChange={(e) => setFormTitle(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    onChange={(e) => {
+                      setFormTitle(e.target.value);
+                      if (formErrors.title) setFormErrors({ ...formErrors, title: undefined });
+                    }}
+                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                      formErrors.title ? 'border-red-500' : 'border-gray-300'
+                    }`}
                     placeholder="Resource title"
                   />
+                  {formErrors.title && (
+                    <p className="mt-1 text-xs text-red-600">{formErrors.title}</p>
+                  )}
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    URL *
+                    Link URL *
                   </label>
                   <input
                     type="url"
                     value={formUrl}
-                    onChange={(e) => setFormUrl(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    onChange={(e) => {
+                      setFormUrl(e.target.value);
+                      if (formErrors.url) setFormErrors({ ...formErrors, url: undefined });
+                    }}
+                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                      formErrors.url ? 'border-red-500' : 'border-gray-300'
+                    }`}
                     placeholder="https://..."
                   />
-                  <p className="mt-1 text-xs text-gray-500">
-                    YouTube URLs will automatically get thumbnails
-                  </p>
+                  {formErrors.url ? (
+                    <p className="mt-1 text-xs text-red-600">{formErrors.url}</p>
+                  ) : (
+                    <p className="mt-1 text-xs text-gray-500">
+                      YouTube URLs will automatically get thumbnails
+                    </p>
+                  )}
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Description
+                    Description (optional)
                   </label>
                   <textarea
                     value={formDescription}
@@ -393,116 +390,108 @@ export default function AdminResourcesPage() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Category
-                    </label>
-                    <div className="flex gap-2">
-                      <select
-                        value={formCategoryId}
-                        onChange={(e) => setFormCategoryId(e.target.value)}
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      >
-                        <option value="">None</option>
-                        {categories.map((cat) => (
-                          <option key={cat.id} value={cat.id}>
-                            {cat.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
+                {/* Advanced Section - Collapsible */}
+                <div className="border-t border-gray-200 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowAdvanced(!showAdvanced)}
+                    className="flex items-center justify-between w-full text-sm font-medium text-gray-700 hover:text-gray-900"
+                  >
+                    <span>Advanced Options</span>
+                    {showAdvanced ? (
+                      <ChevronUpIcon className="w-5 h-5" />
+                    ) : (
+                      <ChevronDownIcon className="w-5 h-5" />
+                    )}
+                  </button>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Visibility
-                    </label>
-                    <select
-                      value={formVisibility}
-                      onChange={(e) => setFormVisibility(e.target.value as 'all' | 'selected')}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="all">Everyone</option>
-                      <option value="selected">Selected Members</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* Quick add category */}
-                <div className="flex gap-2 items-end">
-                  <div className="flex-1">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Quick Add Category
-                    </label>
-                    <input
-                      type="text"
-                      value={newCategoryName}
-                      onChange={(e) => setNewCategoryName(e.target.value)}
-                      onKeyPress={(e) => e.key === 'Enter' && handleCreateCategory()}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="Category name..."
-                    />
-                  </div>
-                  <Button onClick={handleCreateCategory} variant="outline">
-                    Add
-                  </Button>
-                </div>
-
-                {/* Cover Image URL */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Cover Image URL (optional)
-                  </label>
-                  <input
-                    type="url"
-                    value={formCoverImageUrl}
-                    onChange={(e) => setFormCoverImageUrl(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="https://..."
-                  />
-                </div>
-
-                {/* Member Selection */}
-                {formVisibility === 'selected' && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Select Members ({formSelectedMemberIds.length} selected)
-                    </label>
-                    <div className="border border-gray-300 rounded-lg max-h-48 overflow-y-auto p-2">
-                      {members.length === 0 ? (
-                        <p className="text-sm text-gray-500 text-center py-4">No members found</p>
-                      ) : (
-                        members.map((member) => (
-                          <label
-                            key={member.id}
-                            className="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer"
-                          >
-                            <input
-                              type="checkbox"
-                              checked={formSelectedMemberIds.includes(member.id)}
-                              onChange={() => toggleMemberSelection(member.id)}
-                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                            />
-                            <span className="text-sm text-gray-700">
-                              {member.name} ({member.email})
-                            </span>
+                  {showAdvanced && (
+                    <div className="mt-4 space-y-4">
+                      {/* Category */}
+                      {categories.length > 0 && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Category (optional)
                           </label>
-                        ))
+                          <select
+                            value={formCategoryId}
+                            onChange={(e) => setFormCategoryId(e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          >
+                            <option value="">None</option>
+                            {categories.map((cat) => (
+                              <option key={cat.id} value={cat.id}>
+                                {cat.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
                       )}
+
+                      {/* Cover Image URL */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Cover Image URL (optional)
+                        </label>
+                        <input
+                          type="url"
+                          value={formCoverImageUrl}
+                          onChange={(e) => setFormCoverImageUrl(e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="https://..."
+                        />
+                        <p className="mt-1 text-xs text-gray-500">
+                          Override automatic thumbnail (e.g., for custom images)
+                        </p>
+                      </div>
+
+                      {/* Visibility - Simplified for now */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Visibility
+                        </label>
+                        <select
+                          value={formVisibility}
+                          onChange={(e) => setFormVisibility(e.target.value as 'all' | 'selected')}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="all">Everyone</option>
+                          <option value="selected" disabled>
+                            Selected Members (coming soon)
+                          </option>
+                        </select>
+                        <p className="mt-1 text-xs text-gray-500">
+                          Default: Everyone can see this resource
+                        </p>
+                      </div>
                     </div>
+                  )}
+                </div>
+
+                {/* Error Display */}
+                {error && (
+                  <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-sm text-red-800">{error}</p>
                   </div>
                 )}
 
+                {/* Actions */}
                 <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
                   <Button
-                    onClick={() => setShowModal(false)}
+                    onClick={() => {
+                      setShowModal(false);
+                      setError(null);
+                      setFormErrors({});
+                    }}
                     variant="outline"
                     disabled={isSaving}
                   >
                     Cancel
                   </Button>
-                  <Button onClick={handleSave} disabled={isSaving}>
+                  <Button 
+                    onClick={handleSave} 
+                    disabled={isSaving || !formTitle.trim() || !formUrl.trim()}
+                  >
                     {isSaving ? 'Saving...' : editingResource ? 'Update' : 'Create'}
                   </Button>
                 </div>
