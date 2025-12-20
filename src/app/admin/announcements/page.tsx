@@ -23,7 +23,7 @@ import AdminLayout from '@/components/layouts/AdminLayout';
 import ConfirmDialog from '@/components/admin/ConfirmDialog';
 import { Button } from '@/components';
 import { getCurrentUser } from '@/lib/auth';
-import { GripVerticalIcon } from '@heroicons/react/24/outline';
+import { Bars3Icon } from '@heroicons/react/24/outline';
 
 interface Announcement {
   id: string;
@@ -91,7 +91,7 @@ function SortableAnnouncementRow({
             className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600"
             aria-label="Drag to reorder"
           >
-            <GripVerticalIcon className="w-5 h-5" />
+            <Bars3Icon className="w-5 h-5" />
           </button>
           <div className="text-sm font-medium text-gray-900">
             {announcement.title}
