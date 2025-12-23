@@ -34,7 +34,20 @@ export async function GET(
       return NextResponse.json({ error: 'Resource not found' }, { status: 404 });
     }
 
-    return NextResponse.json({ resource: data });
+    // Get assigned members
+    const { data: assignments } = await supabase
+      .from('resource_assignments')
+      .select('member_id')
+      .eq('resource_id', params.id);
+
+    const assigned_member_ids = (assignments || []).map(a => a.member_id);
+
+    return NextResponse.json({ 
+      resource: {
+        ...data,
+        assigned_member_ids,
+      } 
+    });
   } catch (err: any) {
     console.error('Get resource error:', err);
     return NextResponse.json(
@@ -62,6 +75,7 @@ export async function PUT(
       is_lab_wide,
       visibility_alumni,
       cohorts,
+      assigned_member_ids, // New field
       userId 
     } = body;
 
@@ -124,6 +138,25 @@ export async function PUT(
 
     if (!resource) {
       return NextResponse.json({ error: 'Resource not found' }, { status: 404 });
+    }
+
+    // Update assignments
+    // 1. Delete existing
+    await supabase
+      .from('resource_assignments')
+      .delete()
+      .eq('resource_id', params.id);
+
+    // 2. Insert new
+    if (assigned_member_ids && Array.isArray(assigned_member_ids) && assigned_member_ids.length > 0) {
+      const assignments = assigned_member_ids.map(mId => ({
+        resource_id: params.id,
+        member_id: mId,
+      }));
+
+      await supabase
+        .from('resource_assignments')
+        .insert(assignments);
     }
 
     return NextResponse.json({ resource });

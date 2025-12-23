@@ -30,6 +30,7 @@ export interface Resource {
   is_lab_wide: boolean;
   visibility_alumni: boolean;
   cohorts: number[];
+  assigned_member_ids?: string[]; // IDs of members assigned to this resource
   created_at?: string;
 }
 

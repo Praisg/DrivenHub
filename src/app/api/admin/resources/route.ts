@@ -45,6 +45,7 @@ export async function POST(req: NextRequest) {
       is_lab_wide,
       visibility_alumni,
       cohorts,
+      assigned_member_ids, // New field
       userId 
     } = body;
 
@@ -103,6 +104,24 @@ export async function POST(req: NextRequest) {
     if (resourceError) {
       console.error('Create resource error details:', resourceError);
       throw new Error(`Failed to create resource: ${resourceError.message}`);
+    }
+
+    // Handle individual member assignments
+    if (assigned_member_ids && Array.isArray(assigned_member_ids) && assigned_member_ids.length > 0) {
+      const assignments = assigned_member_ids.map(mId => ({
+        resource_id: resource.id,
+        member_id: mId,
+      }));
+
+      const { error: assignmentError } = await supabase
+        .from('resource_assignments')
+        .insert(assignments);
+
+      if (assignmentError) {
+        console.error('Error creating assignments:', assignmentError);
+        // We don't throw here to ensure the resource creation isn't lost, 
+        // but in a production app you might want more robust error handling.
+      }
     }
 
     return NextResponse.json({ resource }, { status: 201 });

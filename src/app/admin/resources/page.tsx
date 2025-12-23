@@ -13,12 +13,15 @@ import {
   XMarkIcon,
   GlobeAltIcon,
   DocumentArrowUpIcon,
-  PhotoIcon
+  PhotoIcon,
+  UserIcon,
+  MagnifyingGlassIcon
 } from '@heroicons/react/24/outline';
-import { Resource } from '@/types';
+import { Resource, Member } from '@/types';
 
 export default function AdminResourcesPage() {
   const [resources, setResources] = useState<Resource[]>([]);
+  const [members, setMembers] = useState<Member[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
@@ -26,6 +29,7 @@ export default function AdminResourcesPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [memberSearchQuery, setMemberSearchQuery] = useState('');
 
   const user = getCurrentUser();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -39,6 +43,7 @@ export default function AdminResourcesPage() {
   const [formIsLabWide, setFormIsLabWide] = useState(true);
   const [formVisibilityAlumni, setFormVisibilityAlumni] = useState(false);
   const [formCohorts, setFormCohorts] = useState<number[]>([]);
+  const [formAssignedMemberIds, setFormAssignedMemberIds] = useState<string[]>([]);
   
   // File upload state
   const [resourceFile, setResourceFile] = useState<File | null>(null);
@@ -56,6 +61,7 @@ export default function AdminResourcesPage() {
       setIsLoading(true);
       setError(null);
 
+      // Fetch resources
       const resourcesRes = await fetch('/api/admin/resources');
       if (!resourcesRes.ok) {
         const errorData = await resourcesRes.json().catch(() => ({}));
@@ -63,6 +69,13 @@ export default function AdminResourcesPage() {
       }
       const resourcesData = await resourcesRes.json();
       setResources(resourcesData.resources || []);
+
+      // Fetch members for assignment
+      const membersRes = await fetch('/api/admin/members');
+      if (membersRes.ok) {
+        const membersData = await membersRes.json();
+        setMembers(membersData.members || []);
+      }
     } catch (err: any) {
       console.error('Error fetching data:', err);
       setError(err.message || 'Failed to load resources.');
@@ -80,6 +93,7 @@ export default function AdminResourcesPage() {
     setFormIsLabWide(true);
     setFormVisibilityAlumni(false);
     setFormCohorts([]);
+    setFormAssignedMemberIds([]);
     setResourceFile(null);
     setThumbnailFile(null);
     setFormErrors({});
@@ -88,19 +102,32 @@ export default function AdminResourcesPage() {
   };
 
   const handleEdit = async (resource: Resource) => {
-    setEditingResource(resource);
-    setFormTitle(resource.title);
-    setFormDescription(resource.description || '');
-    setFormUrl(resource.url);
-    setFormThumbnailUrl(resource.thumbnail_url || '');
-    setFormIsLabWide(resource.is_lab_wide);
-    setFormVisibilityAlumni(resource.visibility_alumni);
-    setFormCohorts(resource.cohorts || []);
-    setResourceFile(null);
-    setThumbnailFile(null);
-    setFormErrors({});
-    setError(null);
-    setShowModal(true);
+    try {
+      setIsLoading(true);
+      // Fetch full resource details including assignments
+      const res = await fetch(`/api/admin/resources/${resource.id}`);
+      if (!res.ok) throw new Error('Failed to fetch resource details');
+      const { resource: fullResource } = await res.json();
+
+      setEditingResource(fullResource);
+      setFormTitle(fullResource.title);
+      setFormDescription(fullResource.description || '');
+      setFormUrl(fullResource.url);
+      setFormThumbnailUrl(fullResource.thumbnail_url || '');
+      setFormIsLabWide(fullResource.is_lab_wide);
+      setFormVisibilityAlumni(fullResource.visibility_alumni);
+      setFormCohorts(fullResource.cohorts || []);
+      setFormAssignedMemberIds(fullResource.assigned_member_ids || []);
+      setResourceFile(null);
+      setThumbnailFile(null);
+      setFormErrors({});
+      setError(null);
+      setShowModal(true);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleDelete = (id: string, title: string) => {
@@ -200,6 +227,7 @@ export default function AdminResourcesPage() {
           is_lab_wide: formIsLabWide,
           visibility_alumni: formVisibilityAlumni,
           cohorts: formCohorts,
+          assigned_member_ids: formAssignedMemberIds,
           userId: user.id,
         }),
       });
@@ -226,6 +254,23 @@ export default function AdminResourcesPage() {
       setFormCohorts([...formCohorts, cohort].sort((a, b) => a - b));
     }
   };
+
+  const toggleMember = (memberId: string) => {
+    if (formAssignedMemberIds.includes(memberId)) {
+      setFormAssignedMemberIds(formAssignedMemberIds.filter(id => id !== memberId));
+    } else {
+      setFormAssignedMemberIds([...formAssignedMemberIds, memberId]);
+    }
+  };
+
+  const selectAllMembers = () => {
+    setFormAssignedMemberIds(members.map(m => m.id));
+  };
+
+  const filteredMembers = members.filter(m => 
+    m.name.toLowerCase().includes(memberSearchQuery.toLowerCase()) ||
+    m.email.toLowerCase().includes(memberSearchQuery.toLowerCase())
+  );
 
   const filteredResources = resources.filter((resource) => {
     const matchesSearch =
@@ -521,6 +566,83 @@ export default function AdminResourcesPage() {
                         <p className="mt-2 text-xs text-gray-500">
                           Used for Alumni and Lab Members (if not Lab-wide)
                         </p>
+                      </div>
+
+                      {/* Individual Member Assignment */}
+                      <div className="p-4 bg-white border border-gray-200 rounded-lg shadow-sm">
+                        <div className="flex items-center justify-between mb-4">
+                          <div>
+                            <h4 className="text-sm font-semibold text-gray-900 flex items-center">
+                              <UserIcon className="w-4 h-4 mr-1.5 text-blue-600" />
+                              Assign to Specific Members
+                            </h4>
+                            <p className="text-xs text-gray-500 mt-0.5">
+                              {formAssignedMemberIds.length} member(s) selected
+                            </p>
+                          </div>
+                          <div className="flex gap-2">
+                            <button 
+                              type="button"
+                              onClick={selectAllMembers}
+                              className="text-xs font-medium text-blue-600 hover:text-blue-800"
+                            >
+                              Select All
+                            </button>
+                            <span className="text-gray-300">|</span>
+                            <button 
+                              type="button"
+                              onClick={() => setFormAssignedMemberIds([])}
+                              className="text-xs font-medium text-red-600 hover:text-red-800"
+                            >
+                              Clear
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Member Search */}
+                        <div className="relative mb-3">
+                          <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                          <input
+                            type="text"
+                            placeholder="Filter members..."
+                            value={memberSearchQuery}
+                            onChange={(e) => setMemberSearchQuery(e.target.value)}
+                            className="w-full pl-9 pr-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 outline-none"
+                          />
+                        </div>
+
+                        {/* Members List */}
+                        <div className="max-h-48 overflow-y-auto border border-gray-100 rounded-md bg-gray-50/50">
+                          {filteredMembers.length === 0 ? (
+                            <p className="p-4 text-xs text-center text-gray-500 italic">No members found</p>
+                          ) : (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 p-2">
+                              {filteredMembers.map((m) => (
+                                <button
+                                  key={m.id}
+                                  type="button"
+                                  onClick={() => toggleMember(m.id)}
+                                  className={`flex items-center px-3 py-2 rounded-md border text-left transition-all ${
+                                    formAssignedMemberIds.includes(m.id)
+                                      ? 'bg-blue-600 border-blue-600 text-white shadow-sm'
+                                      : 'bg-white border-gray-200 text-gray-700 hover:border-blue-300 hover:bg-blue-50/50'
+                                  }`}
+                                >
+                                  <div className="min-w-0">
+                                    <p className="text-xs font-bold truncate leading-tight">
+                                      {m.name}
+                                    </p>
+                                    <p className={`text-[10px] truncate leading-tight mt-0.5 ${
+                                      formAssignedMemberIds.includes(m.id) ? 'text-blue-100' : 'text-gray-400'
+                                    }`}>
+                                      {m.email}
+                                    </p>
+                                  </div>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>

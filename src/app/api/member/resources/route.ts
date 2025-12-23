@@ -35,11 +35,27 @@ export async function GET(req: NextRequest) {
     }
 
     // Build the query based on access rules:
-    // Lab Member: is_lab_wide = true OR cohort = ANY(cohorts)
-    // Alumni: visibility_alumni = true AND cohort = ANY(cohorts)
+    // A resource is visible if:
+    // 1. (Member is Lab Member AND resource is Lab-wide)
+    // 2. OR (Resource is assigned to Member's cohort)
+    // 3. OR (Member is Alumni AND Resource is marked for Alumni AND assigned to Member's cohort)
+    // 4. OR (Resource is individually assigned to Member)
     
+    // First, get IDs of resources individually assigned to this user
+    const { data: individualAssignments } = await supabase
+      .from('resource_assignments')
+      .select('resource_id')
+      .eq('member_id', userId);
+    
+    const individuallyAssignedIds = (individualAssignments || []).map(a => a.resource_id);
+
     let filterParts = [];
     
+    // Add individual assignments if they exist
+    if (individuallyAssignedIds.length > 0) {
+      filterParts.push(`id.in.(${individuallyAssignedIds.join(',')})`);
+    }
+
     if (member.is_lab_member) {
       // Lab Members see it if it's lab-wide
       filterParts.push('is_lab_wide.eq.true');
