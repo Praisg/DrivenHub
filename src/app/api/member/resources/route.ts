@@ -19,69 +19,31 @@ export async function GET(req: NextRequest) {
 
     const supabase = getSupabase();
 
-    // Get user's role and cohort
-    const { data: member, error: memberError } = await supabase
-      .from('members')
-      .select('cohort, is_lab_member, is_alumni')
-      .eq('id', userId)
-      .single();
-
-    if (memberError || !member) {
-      console.error('Member lookup error:', memberError);
-      return NextResponse.json(
-        { error: 'Member not found' },
-        { status: 404 }
-      );
-    }
-
-    // Build the query based on access rules:
-    // A resource is visible if:
-    // 1. (Member is Lab Member AND resource is Lab-wide)
-    // 2. OR (Resource is assigned to Member's cohort)
-    // 3. OR (Member is Alumni AND Resource is marked for Alumni AND assigned to Member's cohort)
-    // 4. OR (Resource is individually assigned to Member)
+    // The logic is now simple: A member sees a resource ONLY if it is 
+    // individually assigned to them in the resource_assignments table.
+    // This works exactly like how skill assignments work.
     
-    // First, get IDs of resources individually assigned to this user
-    const { data: individualAssignments } = await supabase
+    const { data: assignments, error: assignmentError } = await supabase
       .from('resource_assignments')
       .select('resource_id')
       .eq('member_id', userId);
-    
-    const individuallyAssignedIds = (individualAssignments || []).map(a => a.resource_id);
 
-    // Build the query based on access rules
-    let filterParts = [];
-    
-    // 1. Individual assignments (High priority)
-    if (individuallyAssignedIds.length > 0) {
-      filterParts.push(`id.in.(${individuallyAssignedIds.join(',')})`);
+    if (assignmentError) {
+      console.error('Assignment fetch error:', assignmentError);
+      throw new Error(`Failed to fetch assignments: ${assignmentError.message}`);
     }
 
-    // 2. Lab Member rules
-    if (member.is_lab_member) {
-      // Lab-wide resources
-      filterParts.push('is_lab_wide.eq.true');
-      
-      // Cohort-specific lab resources
-      if (member.cohort) {
-        filterParts.push(`and(is_lab_wide.eq.false,cohorts.cs.{${member.cohort}})`);
-      }
-    }
-    
-    // 3. Alumni rules
-    if (member.is_alumni && member.cohort) {
-      filterParts.push(`and(visibility_alumni.eq.true,cohorts.cs.{${member.cohort}})`);
-    }
+    const resourceIds = (assignments || []).map(a => a.resource_id);
 
-    if (filterParts.length === 0) {
+    if (resourceIds.length === 0) {
       return NextResponse.json({ resources: [] });
     }
 
-    // Combine filters with OR logic
+    // Fetch the actual resource details for these IDs
     const { data: resources, error: resourceError } = await supabase
       .from('resources')
       .select('*')
-      .or(filterParts.join(','))
+      .in('id', resourceIds)
       .order('created_at', { ascending: false });
 
     if (resourceError) {

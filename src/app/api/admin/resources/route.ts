@@ -42,10 +42,7 @@ export async function POST(req: NextRequest) {
       description, 
       url, 
       thumbnailUrl: bodyThumbnailUrl,
-      is_lab_wide,
-      visibility_alumni,
-      cohorts,
-      assigned_member_ids, // New field
+      assigned_member_ids,
       userId 
     } = body;
 
@@ -83,21 +80,17 @@ export async function POST(req: NextRequest) {
     const parsed = parseResourceUrl(url);
     const thumbnailUrl = bodyThumbnailUrl || parsed.thumbnailUrl || null;
 
-    const insertData: any = {
-      title,
-      description: description || null,
-      url,
-      thumbnail_url: thumbnailUrl,
-      provider: parsed.provider,
-      is_lab_wide: is_lab_wide ?? true,
-      visibility_alumni: visibility_alumni ?? false,
-      cohorts: cohorts || [],
-      created_by: userId,
-    };
-
+    // Create the resource record
     const { data: resource, error: resourceError } = await supabase
       .from('resources')
-      .insert(insertData)
+      .insert({
+        title,
+        description: description || null,
+        url,
+        thumbnail_url: thumbnailUrl,
+        provider: parsed.provider,
+        created_by: userId,
+      })
       .select()
       .single();
 
@@ -119,8 +112,6 @@ export async function POST(req: NextRequest) {
 
       if (assignmentError) {
         console.error('Error creating assignments:', assignmentError);
-        // We don't throw here to ensure the resource creation isn't lost, 
-        // but in a production app you might want more robust error handling.
       }
     }
 

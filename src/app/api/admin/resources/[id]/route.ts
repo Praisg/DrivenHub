@@ -72,10 +72,7 @@ export async function PUT(
       description, 
       url, 
       thumbnailUrl: customThumbnailUrl,
-      is_lab_wide,
-      visibility_alumni,
-      cohorts,
-      assigned_member_ids, // New field
+      assigned_member_ids,
       userId 
     } = body;
 
@@ -123,9 +120,6 @@ export async function PUT(
         url,
         thumbnail_url: thumbnailUrl,
         provider: parsed.provider,
-        is_lab_wide: is_lab_wide ?? true,
-        visibility_alumni: visibility_alumni ?? false,
-        cohorts: cohorts || [],
         updated_at: new Date().toISOString(),
       })
       .eq('id', params.id)

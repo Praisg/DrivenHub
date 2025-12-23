@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import AdminLayout from '@/components/layouts/AdminLayout';
 import ConfirmDialog from '@/components/admin/ConfirmDialog';
 import { Button } from '@/components';
@@ -15,7 +15,8 @@ import {
   DocumentArrowUpIcon,
   PhotoIcon,
   UserIcon,
-  MagnifyingGlassIcon
+  MagnifyingGlassIcon,
+  FunnelIcon
 } from '@heroicons/react/24/outline';
 import { Resource, Member } from '@/types';
 
@@ -29,7 +30,12 @@ export default function AdminResourcesPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // Filter state for member selection
   const [memberSearchQuery, setMemberSearchQuery] = useState('');
+  const [filterLabOnly, setFilterLabOnly] = useState(false);
+  const [filterAlumniOnly, setFilterAlumniOnly] = useState(false);
+  const [filterCohorts, setFilterCohorts] = useState<number[]>([]);
 
   const user = getCurrentUser();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -40,9 +46,6 @@ export default function AdminResourcesPage() {
   const [formDescription, setFormDescription] = useState('');
   const [formUrl, setFormUrl] = useState('');
   const [formThumbnailUrl, setFormThumbnailUrl] = useState('');
-  const [formIsLabWide, setFormIsLabWide] = useState(false);
-  const [formVisibilityAlumni, setFormVisibilityAlumni] = useState(false);
-  const [formCohorts, setFormCohorts] = useState<number[]>([]);
   const [formAssignedMemberIds, setFormAssignedMemberIds] = useState<string[]>([]);
   
   // File upload state
@@ -90,14 +93,18 @@ export default function AdminResourcesPage() {
     setFormDescription('');
     setFormUrl('');
     setFormThumbnailUrl('');
-    setFormIsLabWide(false);
-    setFormVisibilityAlumni(false);
-    setFormCohorts([]);
     setFormAssignedMemberIds([]);
     setResourceFile(null);
     setThumbnailFile(null);
     setFormErrors({});
     setError(null);
+    
+    // Reset filters
+    setFilterLabOnly(false);
+    setFilterAlumniOnly(false);
+    setFilterCohorts([]);
+    setMemberSearchQuery('');
+    
     setShowModal(true);
   };
 
@@ -114,14 +121,18 @@ export default function AdminResourcesPage() {
       setFormDescription(fullResource.description || '');
       setFormUrl(fullResource.url);
       setFormThumbnailUrl(fullResource.thumbnail_url || '');
-      setFormIsLabWide(fullResource.is_lab_wide);
-      setFormVisibilityAlumni(fullResource.visibility_alumni);
-      setFormCohorts(fullResource.cohorts || []);
       setFormAssignedMemberIds(fullResource.assigned_member_ids || []);
       setResourceFile(null);
       setThumbnailFile(null);
       setFormErrors({});
       setError(null);
+      
+      // Reset filters when opening edit
+      setFilterLabOnly(false);
+      setFilterAlumniOnly(false);
+      setFilterCohorts([]);
+      setMemberSearchQuery('');
+      
       setShowModal(true);
     } catch (err: any) {
       setError(err.message);
@@ -224,9 +235,6 @@ export default function AdminResourcesPage() {
           description: formDescription.trim() || null,
           url: finalUrl,
           thumbnailUrl: finalThumbnailUrl || null,
-          is_lab_wide: formIsLabWide,
-          visibility_alumni: formVisibilityAlumni,
-          cohorts: formCohorts,
           assigned_member_ids: formAssignedMemberIds,
           userId: user.id,
         }),
@@ -247,15 +255,38 @@ export default function AdminResourcesPage() {
     }
   };
 
-  const toggleCohort = (cohort: number) => {
-    if (formCohorts.includes(cohort)) {
-      setFormCohorts(formCohorts.filter(c => c !== cohort));
+  // Filter Logic
+  const toggleFilterCohort = (cohort: number) => {
+    if (filterCohorts.includes(cohort)) {
+      setFilterCohorts(filterCohorts.filter(c => c !== cohort));
     } else {
-      setFormCohorts([...formCohorts, cohort].sort((a, b) => a - b));
+      setFilterCohorts([...filterCohorts, cohort].sort((a, b) => a - b));
     }
   };
 
-  const toggleMember = (memberId: string) => {
+  const filteredMembers = useMemo(() => {
+    return members.filter(m => {
+      // Search filter
+      const matchesSearch = 
+        m.name.toLowerCase().includes(memberSearchQuery.toLowerCase()) ||
+        m.email.toLowerCase().includes(memberSearchQuery.toLowerCase());
+      
+      // Role filter
+      let matchesRole = true;
+      if (filterLabOnly && !m.is_lab_member) matchesRole = false;
+      if (filterAlumniOnly && !m.is_alumni) matchesRole = false;
+      
+      // Cohort filter
+      let matchesCohort = true;
+      if (filterCohorts.length > 0) {
+        matchesCohort = m.cohort ? filterCohorts.includes(m.cohort) : false;
+      }
+      
+      return matchesSearch && matchesRole && matchesCohort;
+    });
+  }, [members, memberSearchQuery, filterLabOnly, filterAlumniOnly, filterCohorts]);
+
+  const toggleMemberSelection = (memberId: string) => {
     if (formAssignedMemberIds.includes(memberId)) {
       setFormAssignedMemberIds(formAssignedMemberIds.filter(id => id !== memberId));
     } else {
@@ -263,16 +294,18 @@ export default function AdminResourcesPage() {
     }
   };
 
-  const selectAllMembers = () => {
-    setFormAssignedMemberIds(members.map(m => m.id));
+  const selectAllFiltered = () => {
+    const filteredIds = filteredMembers.map(m => m.id);
+    const newSelection = Array.from(new Set([...formAssignedMemberIds, ...filteredIds]));
+    setFormAssignedMemberIds(newSelection);
   };
 
-  const filteredMembers = members.filter(m => 
-    m.name.toLowerCase().includes(memberSearchQuery.toLowerCase()) ||
-    m.email.toLowerCase().includes(memberSearchQuery.toLowerCase())
-  );
+  const deselectAllFiltered = () => {
+    const filteredIds = new Set(filteredMembers.map(m => m.id));
+    setFormAssignedMemberIds(formAssignedMemberIds.filter(id => !filteredIds.has(id)));
+  };
 
-  const filteredResources = resources.filter((resource) => {
+  const resourcesFiltered = resources.filter((resource) => {
     const matchesSearch =
       !searchQuery ||
       resource.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -286,7 +319,7 @@ export default function AdminResourcesPage() {
         <div className="mb-8 flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Resources</h1>
-            <p className="text-gray-600">Manage resources for Lab Members and Alumni</p>
+            <p className="text-gray-600">Assign workshop recordings and files to members</p>
           </div>
           <Button onClick={handleCreate}>
             <PlusIcon className="w-5 h-5 mr-2" />
@@ -295,13 +328,16 @@ export default function AdminResourcesPage() {
         </div>
 
         <div className="mb-6">
-          <input
-            type="text"
-            placeholder="Search resources..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full max-w-md px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+          <div className="relative max-w-md">
+            <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search resources..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
         </div>
 
         {error && (
@@ -315,14 +351,14 @@ export default function AdminResourcesPage() {
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
             <p className="text-gray-600">Loading resources...</p>
           </div>
-        ) : filteredResources.length === 0 ? (
+        ) : resourcesFiltered.length === 0 ? (
           <div className="text-center py-12 bg-white rounded-lg shadow-md border border-gray-100">
             <p className="text-gray-600 mb-4">No resources found.</p>
             <Button onClick={handleCreate}>Create Your First Resource</Button>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredResources.map((resource) => (
+            {resourcesFiltered.map((resource) => (
               <div key={resource.id} className="relative group">
                 <ResourceCard resource={resource} />
                 <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
@@ -341,24 +377,6 @@ export default function AdminResourcesPage() {
                     <TrashIcon className="w-4 h-4 text-red-600" />
                   </button>
                 </div>
-                {/* Status Badges */}
-                <div className="mt-2 flex flex-wrap gap-2 px-1">
-                  {resource.is_lab_wide && (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                      Lab-wide
-                    </span>
-                  )}
-                  {resource.visibility_alumni && (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
-                      Alumni
-                    </span>
-                  )}
-                  {resource.cohorts && resource.cohorts.length > 0 && (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
-                      Cohorts: {resource.cohorts.join(', ')}
-                    </span>
-                  )}
-                </div>
               </div>
             ))}
           </div>
@@ -366,10 +384,10 @@ export default function AdminResourcesPage() {
 
         {showModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
-              <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50 rounded-t-xl">
+            <div className="bg-white rounded-xl max-w-2xl w-full max-h-[95vh] overflow-y-auto shadow-2xl">
+              <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50 rounded-t-xl sticky top-0 z-10">
                 <h2 className="text-2xl font-bold text-gray-900">
-                  {editingResource ? 'Edit Resource' : 'New Resource'}
+                  {editingResource ? 'Edit & Assign Resource' : 'New Resource Assignment'}
                 </h2>
                 <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600">
                   <XMarkIcon className="w-6 h-6" />
@@ -393,7 +411,6 @@ export default function AdminResourcesPage() {
                       />
                     </div>
                     
-                    {/* Link vs File */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Resource Link</label>
@@ -416,24 +433,11 @@ export default function AdminResourcesPage() {
                             resourceFile ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-blue-400'
                           }`}
                         >
-                          <input
-                            type="file"
-                            ref={fileInputRef}
-                            onChange={(e) => setResourceFile(e.target.files?.[0] || null)}
-                            className="hidden"
-                          />
+                          <input type="file" ref={fileInputRef} onChange={(e) => setResourceFile(e.target.files?.[0] || null)} className="hidden" />
                           <DocumentArrowUpIcon className={`w-5 h-5 mr-2 ${resourceFile ? 'text-blue-600' : 'text-gray-400'}`} />
                           <span className={`text-sm ${resourceFile ? 'text-blue-700 font-medium' : 'text-gray-500'}`}>
                             {resourceFile ? resourceFile.name : 'Choose File'}
                           </span>
-                          {resourceFile && (
-                            <button 
-                              onClick={(e) => { e.stopPropagation(); setResourceFile(null); }}
-                              className="ml-2 text-gray-400 hover:text-red-500"
-                            >
-                              <XMarkIcon className="w-4 h-4" />
-                            </button>
-                          )}
                         </div>
                       </div>
                     </div>
@@ -449,7 +453,6 @@ export default function AdminResourcesPage() {
                       />
                     </div>
 
-                    {/* Thumbnail Link vs File */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Thumbnail URL</label>
@@ -472,186 +475,134 @@ export default function AdminResourcesPage() {
                             thumbnailFile ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-blue-400'
                           }`}
                         >
-                          <input
-                            type="file"
-                            ref={thumbInputRef}
-                            accept="image/*"
-                            onChange={(e) => setThumbnailFile(e.target.files?.[0] || null)}
-                            className="hidden"
-                          />
+                          <input type="file" ref={thumbInputRef} accept="image/*" onChange={(e) => setThumbnailFile(e.target.files?.[0] || null)} className="hidden" />
                           <PhotoIcon className={`w-5 h-5 mr-2 ${thumbnailFile ? 'text-blue-600' : 'text-gray-400'}`} />
                           <span className={`text-sm ${thumbnailFile ? 'text-blue-700 font-medium' : 'text-gray-500'}`}>
                             {thumbnailFile ? thumbnailFile.name : 'Choose Image'}
                           </span>
-                          {thumbnailFile && (
-                            <button 
-                              onClick={(e) => { e.stopPropagation(); setThumbnailFile(null); }}
-                              className="ml-2 text-gray-400 hover:text-red-500"
-                            >
-                              <XMarkIcon className="w-4 h-4" />
-                            </button>
-                          )}
                         </div>
                       </div>
                     </div>
                   </div>
 
-                  {/* Visibility & Access */}
+                  {/* Assignment Section */}
                   <div className="pt-4 border-t border-gray-100">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                      <GlobeAltIcon className="w-5 h-5 mr-2 text-blue-600" />
-                      Visibility & Access
+                    <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
+                      <FunnelIcon className="w-5 h-5 mr-2 text-blue-600" />
+                      Filter & Assign Members
                     </h3>
                     
                     <div className="space-y-4">
-                      {/* Lab-wide option */}
-                      <label className="flex items-center p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
-                        <input
-                          type="checkbox"
-                          checked={formIsLabWide}
-                          onChange={(e) => {
-                            setFormIsLabWide(e.target.checked);
-                            if (e.target.checked) {
-                              // If marking Lab-wide, maybe clear specific members or just warn
-                            }
-                          }}
-                          className="h-5 w-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                        />
-                        <div className="ml-3">
-                          <span className="block text-sm font-medium text-gray-900">Make Global (All Lab Members)</span>
-                          <span className="block text-xs text-gray-500">Everyone in the Lab will see this automatically.</span>
-                        </div>
-                      </label>
+                      {/* Filter Tools */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <label className={`flex items-center p-3 border rounded-lg cursor-pointer transition-all ${filterLabOnly ? 'bg-blue-50 border-blue-200' : 'bg-white border-gray-200'}`}>
+                          <input type="checkbox" checked={filterLabOnly} onChange={(e) => setFilterLabOnly(e.target.checked)} className="h-5 w-5 text-blue-600 rounded border-gray-300" />
+                          <div className="ml-3">
+                            <span className="block text-sm font-bold text-gray-900">Lab Members</span>
+                          </div>
+                        </label>
 
-                      {formIsLabWide && formAssignedMemberIds.length > 0 && (
-                        <div className="p-2 bg-amber-50 border border-amber-200 rounded text-[10px] text-amber-800">
-                          <strong>Note:</strong> Since this is marked "Global", your individual member selections below are redundant. Everyone will see it.
-                        </div>
-                      )}
+                        <label className={`flex items-center p-3 border rounded-lg cursor-pointer transition-all ${filterAlumniOnly ? 'bg-purple-50 border-purple-200' : 'bg-white border-gray-200'}`}>
+                          <input type="checkbox" checked={filterAlumniOnly} onChange={(e) => setFilterAlumniOnly(e.target.checked)} className="h-5 w-5 text-purple-600 rounded border-gray-300" />
+                          <div className="ml-3">
+                            <span className="block text-sm font-bold text-gray-900">Alumni</span>
+                          </div>
+                        </label>
+                      </div>
 
-                      {/* Alumni Visibility */}
-                      <label className="flex items-center p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
-                        <input
-                          type="checkbox"
-                          checked={formVisibilityAlumni}
-                          onChange={(e) => setFormVisibilityAlumni(e.target.checked)}
-                          className="h-5 w-5 text-purple-600 rounded border-gray-300 focus:ring-purple-500"
-                        />
-                        <div className="ml-3">
-                          <span className="block text-sm font-medium text-gray-900">Available to Alumni</span>
-                          <span className="block text-xs text-gray-500">Visible to former members in selected cohorts</span>
-                        </div>
-                      </label>
-
-                      {/* Cohort Selection */}
+                      {/* Filter Cohorts */}
                       <div className="p-4 bg-gray-50 rounded-lg border border-gray-100">
-                        <div className="flex items-center justify-between mb-3">
-                          <label className="block text-sm font-medium text-gray-900">
-                            Assign to Specific Cohorts
-                          </label>
-                          {formCohorts.length > 0 && (
-                            <button 
-                              onClick={() => setFormCohorts([])}
-                              className="text-xs text-blue-600 hover:underline"
-                            >
-                              Clear Selection
-                            </button>
-                          )}
-                        </div>
+                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">
+                          Filter by Cohort
+                        </label>
                         <div className="flex flex-wrap gap-2">
                           {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((cohort) => (
                             <button
                               key={cohort}
                               type="button"
-                              onClick={() => toggleCohort(cohort)}
-                              className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
-                                formCohorts.includes(cohort)
-                                  ? 'bg-blue-600 text-white shadow-md ring-2 ring-offset-2 ring-blue-500'
-                                  : 'bg-white text-gray-600 border border-gray-300 hover:border-blue-400'
+                              onClick={() => toggleFilterCohort(cohort)}
+                              className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
+                                filterCohorts.includes(cohort)
+                                  ? 'bg-blue-600 text-white shadow-md'
+                                  : 'bg-white text-gray-600 border border-gray-200'
                               }`}
                             >
                               {cohort}
                             </button>
                           ))}
                         </div>
-                        <p className="mt-2 text-xs text-gray-500">
-                          Used for Alumni and Lab Members (if not Lab-wide)
-                        </p>
                       </div>
 
-                      {/* Individual Member Assignment */}
-                      <div className="p-4 bg-white border border-gray-200 rounded-lg shadow-sm">
-                        <div className="flex items-center justify-between mb-4">
-                          <div>
-                            <h4 className="text-sm font-semibold text-gray-900 flex items-center">
-                              <UserIcon className="w-4 h-4 mr-1.5 text-blue-600" />
-                              Assign to Specific Members
-                            </h4>
-                            <p className="text-xs text-gray-500 mt-0.5">
-                              {formAssignedMemberIds.length} member(s) selected
-                            </p>
+                      {/* Member List with Actions */}
+                      <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+                        <div className="p-4 border-b border-gray-100 bg-gray-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                          <div className="relative flex-1">
+                            <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                            <input
+                              type="text"
+                              placeholder="Search filtered list..."
+                              value={memberSearchQuery}
+                              onChange={(e) => setMemberSearchQuery(e.target.value)}
+                              className="w-full pl-9 pr-3 py-1.5 text-sm border border-gray-300 rounded-md outline-none"
+                            />
                           </div>
-                          <div className="flex gap-2">
-                            <button 
-                              type="button"
-                              onClick={selectAllMembers}
-                              className="text-xs font-medium text-blue-600 hover:text-blue-800"
-                            >
-                              Select All
+                          <div className="flex items-center gap-3">
+                            <button type="button" onClick={selectAllFiltered} className="text-xs font-bold text-blue-600 hover:text-blue-800">
+                              Select All Filtered
                             </button>
                             <span className="text-gray-300">|</span>
-                            <button 
-                              type="button"
-                              onClick={() => setFormAssignedMemberIds([])}
-                              className="text-xs font-medium text-red-600 hover:text-red-800"
-                            >
-                              Clear
+                            <button type="button" onClick={deselectAllFiltered} className="text-xs font-bold text-red-600 hover:text-red-800">
+                              Deselect All Filtered
                             </button>
                           </div>
                         </div>
 
-                        {/* Member Search */}
-                        <div className="relative mb-3">
-                          <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                          <input
-                            type="text"
-                            placeholder="Filter members..."
-                            value={memberSearchQuery}
-                            onChange={(e) => setMemberSearchQuery(e.target.value)}
-                            className="w-full pl-9 pr-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 outline-none"
-                          />
-                        </div>
-
-                        {/* Members List */}
-                        <div className="max-h-48 overflow-y-auto border border-gray-100 rounded-md bg-gray-50/50">
-                          {filteredMembers.length === 0 ? (
-                            <p className="p-4 text-xs text-center text-gray-500 italic">No members found</p>
-                          ) : (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 p-2">
-                              {filteredMembers.map((m) => (
-                                <button
-                                  key={m.id}
-                                  type="button"
-                                  onClick={() => toggleMember(m.id)}
-                                  className={`flex items-center px-3 py-2 rounded-md border text-left transition-all ${
-                                    formAssignedMemberIds.includes(m.id)
-                                      ? 'bg-blue-600 border-blue-600 text-white shadow-sm'
-                                      : 'bg-white border-gray-200 text-gray-700 hover:border-blue-300 hover:bg-blue-50/50'
-                                  }`}
-                                >
-                                  <div className="min-w-0">
-                                    <p className="text-xs font-bold truncate leading-tight">
+                        <div className="max-h-64 overflow-y-auto p-2">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            {filteredMembers.map((m) => (
+                              <button
+                                key={m.id}
+                                type="button"
+                                onClick={() => toggleMemberSelection(m.id)}
+                                className={`flex items-center px-3 py-3 rounded-lg border text-left transition-all ${
+                                  formAssignedMemberIds.includes(m.id)
+                                    ? 'bg-blue-600 border-blue-600 text-white shadow-md'
+                                    : 'bg-white border-gray-200 text-gray-700 hover:border-blue-300 hover:bg-blue-50/30'
+                                }`}
+                              >
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center justify-between mb-0.5">
+                                    <p className="text-xs font-black truncate uppercase tracking-tight">
                                       {m.name}
                                     </p>
-                                    <p className={`text-[10px] truncate leading-tight mt-0.5 ${
-                                      formAssignedMemberIds.includes(m.id) ? 'text-blue-100' : 'text-gray-400'
-                                    }`}>
-                                      {m.email}
-                                    </p>
+                                    <span className={`text-[9px] px-1 rounded ${formAssignedMemberIds.includes(m.id) ? 'bg-blue-500' : 'bg-gray-100 text-gray-500'}`}>
+                                      C{m.cohort || '?'}
+                                    </span>
                                   </div>
-                                </button>
-                              ))}
-                            </div>
+                                  <p className={`text-[10px] truncate leading-tight ${
+                                    formAssignedMemberIds.includes(m.id) ? 'text-blue-100' : 'text-gray-400'
+                                  }`}>
+                                    {m.email}
+                                  </p>
+                                </div>
+                              </button>
+                            ))}
+                            {filteredMembers.length === 0 && (
+                              <div className="col-span-full py-8 text-center text-gray-400 italic text-sm">
+                                No members match your current filters.
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        
+                        <div className="p-3 bg-gray-50 border-t border-gray-100 flex justify-between items-center">
+                          <p className="text-xs font-bold text-gray-500">
+                            {formAssignedMemberIds.length} Total Selected
+                          </p>
+                          {formAssignedMemberIds.length > 0 && (
+                            <button type="button" onClick={() => setFormAssignedMemberIds([])} className="text-[10px] uppercase font-black text-red-500 hover:underline tracking-widest">
+                              Clear All
+                            </button>
                           )}
                         </div>
                       </div>
@@ -659,36 +610,15 @@ export default function AdminResourcesPage() {
                   </div>
                 </div>
 
-                {/* Loading states / Errors */}
-                {isUploading && (
-                  <div className="p-3 bg-blue-50 border border-blue-100 rounded-lg flex items-center">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
-                    <span className="text-sm text-blue-700">Uploading files...</span>
-                  </div>
-                )}
-                
-                {error && (
-                  <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-800">
-                    {error}
-                  </div>
-                )}
+                {error && <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-800 font-bold">{error}</div>}
 
-                <div className="flex justify-end gap-3 pt-6 border-t border-gray-100">
-                  <Button
-                    onClick={() => setShowModal(false)}
-                    variant="outline"
-                    disabled={isSaving || isUploading}
-                  >
+                <div className="flex justify-end gap-3 pt-6 border-t border-gray-100 sticky bottom-0 bg-white z-10 pb-2">
+                  <Button onClick={() => setShowModal(false)} variant="outline" disabled={isSaving || isUploading}>
                     Cancel
                   </Button>
-                  <Button 
-                    onClick={handleSave} 
-                    disabled={isSaving || isUploading || !formTitle.trim()}
-                  >
-                    {isSaving ? 'Saving...' : editingResource ? 'Update Resource' : (
-                      formAssignedMemberIds.length > 0 
-                        ? `Assign to ${formAssignedMemberIds.length} Member(s)` 
-                        : 'Create Resource'
+                  <Button onClick={handleSave} disabled={isSaving || isUploading || !formTitle.trim()}>
+                    {isSaving ? 'Saving...' : editingResource ? 'Update Assignments' : (
+                      formAssignedMemberIds.length > 0 ? `Assign to ${formAssignedMemberIds.length} Member(s)` : 'Save Without Assignments'
                     )}
                   </Button>
                 </div>
