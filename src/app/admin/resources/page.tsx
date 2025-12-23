@@ -31,11 +31,7 @@ export default function AdminResourcesPage() {
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   
-  // Filter state for member selection
   const [memberSearchQuery, setMemberSearchQuery] = useState('');
-  const [filterLabOnly, setFilterLabOnly] = useState(false);
-  const [filterAlumniOnly, setFilterAlumniOnly] = useState(false);
-  const [filterCohorts, setFilterCohorts] = useState<number[]>([]);
 
   const user = getCurrentUser();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -104,9 +100,6 @@ export default function AdminResourcesPage() {
     setError(null);
     
     // Reset filters
-    setFilterLabOnly(false);
-    setFilterAlumniOnly(false);
-    setFilterCohorts([]);
     setMemberSearchQuery('');
     
     setShowModal(true);
@@ -133,10 +126,7 @@ export default function AdminResourcesPage() {
       setFormErrors({});
       setError(null);
       
-      // Reset filters when opening edit
-      setFilterLabOnly(false);
-      setFilterAlumniOnly(false);
-      setFilterCohorts([]);
+      // Reset search when opening edit
       setMemberSearchQuery('');
       
       setShowModal(true);
@@ -264,14 +254,6 @@ export default function AdminResourcesPage() {
   };
 
   // Filter Logic
-  const toggleFilterCohort = (cohort: number) => {
-    if (filterCohorts.includes(cohort)) {
-      setFilterCohorts(filterCohorts.filter(c => c !== cohort));
-    } else {
-      setFilterCohorts([...filterCohorts, cohort].sort((a, b) => a - b));
-    }
-  };
-
   const filteredMembers = useMemo(() => {
     return members.filter(m => {
       // Search filter
@@ -279,17 +261,9 @@ export default function AdminResourcesPage() {
         m.name.toLowerCase().includes(memberSearchQuery.toLowerCase()) ||
         m.email.toLowerCase().includes(memberSearchQuery.toLowerCase());
       
-      // Role filter (Now ignored for matching, just using searchQuery and cohorts)
-      
-      // Cohort filter
-      let matchesCohort = true;
-      if (filterCohorts.length > 0) {
-        matchesCohort = m.cohort ? filterCohorts.includes(m.cohort) : false;
-      }
-      
-      return matchesSearch && matchesCohort;
+      return matchesSearch;
     });
-  }, [members, memberSearchQuery, filterCohorts]);
+  }, [members, memberSearchQuery]);
 
   const toggleMemberSelection = (memberId: string) => {
     if (formAssignedMemberIds.includes(memberId)) {
@@ -303,11 +277,6 @@ export default function AdminResourcesPage() {
     const filteredIds = filteredMembers.map(m => m.id);
     const newSelection = Array.from(new Set([...formAssignedMemberIds, ...filteredIds]));
     setFormAssignedMemberIds(newSelection);
-  };
-
-  const deselectAllFiltered = () => {
-    const filteredIds = new Set(filteredMembers.map(m => m.id));
-    setFormAssignedMemberIds(formAssignedMemberIds.filter(id => !filteredIds.has(id)));
   };
 
   const resourcesFiltered = resources.filter((resource) => {
@@ -527,34 +496,11 @@ export default function AdminResourcesPage() {
                   {/* Assignment Section */}
                   <div className="pt-4 border-t border-gray-100">
                     <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
-                      <FunnelIcon className="w-5 h-5 mr-2 text-blue-600" />
+                      <UserIcon className="w-5 h-5 mr-2 text-blue-600" />
                       Assign Members
                     </h3>
                     
                     <div className="space-y-4">
-                      {/* Filter Tool - Cohort Only */}
-                      <div className="p-4 bg-gray-50 rounded-lg border border-gray-100">
-                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">
-                          Filter Members by Cohort
-                        </label>
-                        <div className="flex flex-wrap gap-2">
-                          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((cohort) => (
-                            <button
-                              key={cohort}
-                              type="button"
-                              onClick={() => toggleFilterCohort(cohort)}
-                              className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
-                                filterCohorts.includes(cohort)
-                                  ? 'bg-blue-600 text-white shadow-md'
-                                  : 'bg-white text-gray-600 border border-gray-200'
-                              }`}
-                            >
-                              {cohort}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
                       {/* Member List with Actions */}
                       <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
                         <div className="p-4 border-b border-gray-100 bg-gray-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -562,24 +508,24 @@ export default function AdminResourcesPage() {
                             <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                             <input
                               type="text"
-                              placeholder="Search filtered list..."
+                              placeholder="Search member by name or email..."
                               value={memberSearchQuery}
                               onChange={(e) => setMemberSearchQuery(e.target.value)}
-                              className="w-full pl-9 pr-3 py-1.5 text-sm border border-gray-300 rounded-md outline-none"
+                              className="w-full pl-9 pr-3 py-1.5 text-sm border border-gray-300 rounded-md outline-none focus:ring-1 focus:ring-blue-500"
                             />
                           </div>
                           <div className="flex items-center gap-3">
                             <button type="button" onClick={selectAllFiltered} className="text-xs font-bold text-blue-600 hover:text-blue-800">
-                              Select All Filtered
+                              Select All
                             </button>
                             <span className="text-gray-300">|</span>
-                            <button type="button" onClick={deselectAllFiltered} className="text-xs font-bold text-red-600 hover:text-red-800">
-                              Deselect All Filtered
+                            <button type="button" onClick={() => setFormAssignedMemberIds([])} className="text-xs font-bold text-red-600 hover:text-red-800">
+                              Clear All
                             </button>
                           </div>
                         </div>
 
-                        <div className="max-h-64 overflow-y-auto p-2">
+                        <div className="max-h-80 overflow-y-auto p-2">
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             {filteredMembers.map((m) => (
                               <button
@@ -611,7 +557,7 @@ export default function AdminResourcesPage() {
                             ))}
                             {filteredMembers.length === 0 && (
                               <div className="col-span-full py-8 text-center text-gray-400 italic text-sm">
-                                No members match your current filters.
+                                No members found matching your search.
                               </div>
                             )}
                           </div>
@@ -621,11 +567,6 @@ export default function AdminResourcesPage() {
                           <p className="text-xs font-bold text-gray-500">
                             {formAssignedMemberIds.length} Total Selected
                           </p>
-                          {formAssignedMemberIds.length > 0 && (
-                            <button type="button" onClick={() => setFormAssignedMemberIds([])} className="text-[10px] uppercase font-black text-red-500 hover:underline tracking-widest">
-                              Clear All
-                            </button>
-                          )}
                         </div>
                       </div>
                     </div>
