@@ -2,7 +2,7 @@
  * Resource URL parsing and thumbnail generation utilities
  */
 
-export type ResourceProvider = 'youtube' | 'dropbox' | 'drive' | 'zoom' | 'generic';
+export type ResourceProvider = 'youtube' | 'dropbox' | 'drive' | 'zoom' | 'file' | 'generic';
 
 export interface ParsedResourceUrl {
   provider: ResourceProvider;
@@ -62,6 +62,11 @@ export function parseResourceUrl(url: string): ParsedResourceUrl {
     return { provider: 'zoom' };
   }
 
+  // File/Storage detection
+  if (lowerUrl.includes('supabase.co') || lowerUrl.includes('/storage/v1/object/public/')) {
+    return { provider: 'file' };
+  }
+
   // Default
   return { provider: 'generic' };
 }
@@ -79,6 +84,8 @@ export function getProviderIcon(provider: ResourceProvider): string {
       return '📁';
     case 'zoom':
       return '💻';
+    case 'file':
+      return '📄';
     default:
       return '🔗';
   }
@@ -97,6 +104,8 @@ export function getProviderName(provider: ResourceProvider): string {
       return 'Google Drive';
     case 'zoom':
       return 'Zoom';
+    case 'file':
+      return 'File';
     default:
       return 'Link';
   }

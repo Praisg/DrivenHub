@@ -31,10 +31,7 @@ export async function GET(
     }
 
     if (!data) {
-      return NextResponse.json(
-        { error: 'Resource not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Resource not found' }, { status: 404 });
     }
 
     return NextResponse.json({ resource: data });
@@ -62,9 +59,8 @@ export async function PUT(
       description, 
       url, 
       thumbnailUrl: customThumbnailUrl,
-      visibility_lab,
+      is_lab_wide,
       visibility_alumni,
-      is_cohort_specific,
       cohorts,
       userId 
     } = body;
@@ -93,17 +89,11 @@ export async function PUT(
       .single();
 
     if (memberError || !member) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
     if (member.role !== 'admin') {
-      return NextResponse.json(
-        { error: 'Admin access required' },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
 
     // Parse URL to detect provider and generate thumbnail
@@ -119,9 +109,8 @@ export async function PUT(
         url,
         thumbnail_url: thumbnailUrl,
         provider: parsed.provider,
-        visibility_lab: visibility_lab ?? true,
+        is_lab_wide: is_lab_wide ?? true,
         visibility_alumni: visibility_alumni ?? false,
-        is_cohort_specific: is_cohort_specific ?? false,
         cohorts: cohorts || [],
         updated_at: new Date().toISOString(),
       })
@@ -134,10 +123,7 @@ export async function PUT(
     }
 
     if (!resource) {
-      return NextResponse.json(
-        { error: 'Resource not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Resource not found' }, { status: 404 });
     }
 
     return NextResponse.json({ resource });
@@ -179,17 +165,11 @@ export async function DELETE(
       .single();
 
     if (memberError || !member) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
     if (member.role !== 'admin') {
-      return NextResponse.json(
-        { error: 'Admin access required' },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
 
     // Delete resource

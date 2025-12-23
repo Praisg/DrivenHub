@@ -27,9 +27,8 @@ export interface Resource {
   url: string;
   thumbnail_url?: string;
   provider: string;
-  visibility_lab: boolean;
+  is_lab_wide: boolean;
   visibility_alumni: boolean;
-  is_cohort_specific: boolean;
   cohorts: number[];
   created_at?: string;
 }

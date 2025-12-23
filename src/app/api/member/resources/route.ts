@@ -34,26 +34,25 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Build the query based on access rules
-    // Lab Member: (visibility_lab = true AND is_cohort_specific = false) OR (visibility_lab = true AND is_cohort_specific = true AND cohort = ANY(cohorts))
-    // Alumni: (visibility_alumni = true AND is_cohort_specific = true AND cohort = ANY(cohorts))
+    // Build the query based on access rules:
+    // Lab Member: is_lab_wide = true OR cohort = ANY(cohorts)
+    // Alumni: visibility_alumni = true AND cohort = ANY(cohorts)
     
-    // Using PostgreSQL OR logic via Supabase .or()
     let filterParts = [];
     
     if (member.is_lab_member) {
-      // Lab-wide resources
-      filterParts.push('and(visibility_lab.eq.true,is_cohort_specific.eq.false)');
+      // Lab Members see it if it's lab-wide
+      filterParts.push('is_lab_wide.eq.true');
       
-      // Cohort-specific lab resources
+      // OR if they are in the assigned cohorts
       if (member.cohort) {
-        filterParts.push(`and(visibility_lab.eq.true,is_cohort_specific.eq.true,cohorts.cs.{${member.cohort}})`);
+        filterParts.push(`cohorts.cs.{${member.cohort}}`);
       }
     }
     
     if (member.is_alumni && member.cohort) {
-      // Alumni cohort-specific resources
-      filterParts.push(`and(visibility_alumni.eq.true,is_cohort_specific.eq.true,cohorts.cs.{${member.cohort}})`);
+      // Alumni see it ONLY if they are in the assigned cohorts AND visibility_alumni is true
+      filterParts.push(`and(visibility_alumni.eq.true,cohorts.cs.{${member.cohort}})`);
     }
 
     if (filterParts.length === 0) {
