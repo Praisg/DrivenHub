@@ -62,7 +62,15 @@ export async function PUT(
   try {
     const { skillId } = params;
     const body = await req.json();
-    const { name, description, level, contentItems } = body;
+    const { 
+      name, 
+      description, 
+      what_it_develops, 
+      why_it_matters, 
+      how_it_works, 
+      level, 
+      contentItems 
+    } = body;
 
     const supabase = getSupabase();
 
@@ -70,6 +78,9 @@ export async function PUT(
     const updateData: any = {};
     if (name !== undefined) updateData.name = name;
     if (description !== undefined) updateData.description = description;
+    if (what_it_develops !== undefined) updateData.what_it_develops = what_it_develops;
+    if (why_it_matters !== undefined) updateData.why_it_matters = why_it_matters;
+    if (how_it_works !== undefined) updateData.how_it_works = how_it_works;
     if (level !== undefined) {
       if (!['Awareness', 'Practice', 'Embodiment', 'Mastery', 'Mentorship'].includes(level)) {
         return NextResponse.json(

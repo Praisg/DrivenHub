@@ -4,7 +4,16 @@ import { useState, useEffect } from 'react';
 import { Card, Button } from '@/components';
 import { Skill, SkillContentItem } from '@/types';
 import { getCurrentUser } from '@/lib/auth';
-import { ChevronDownIcon, ChevronUpIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline';
+import { 
+  ChevronDownIcon, 
+  ChevronUpIcon, 
+  CheckCircleIcon, 
+  XCircleIcon,
+  InformationCircleIcon,
+  SparklesIcon,
+  QuestionMarkCircleIcon,
+  LightBulbIcon
+} from '@heroicons/react/24/outline';
 import { CheckCircleIcon as CheckCircleIconSolid } from '@heroicons/react/24/solid';
 
 interface MemberSkillsViewProps {
@@ -274,24 +283,60 @@ export default function MemberSkillsView({ userId }: MemberSkillsViewProps) {
             {isExpanded && details && (
               <div className="border-t border-gray-200 bg-slate-50">
                 <div className="p-6 space-y-6">
-                  {/* Full Description Section */}
-                  <section className="rounded-2xl border border-slate-200 bg-white p-4 md:p-5">
-                    <h3 className="text-sm font-semibold text-slate-900 mb-2 flex items-center gap-2">
-                      <span className="h-4 w-1 rounded-full bg-indigo-500" />
-                      Full Description
-                    </h3>
-                    <p className="text-sm text-slate-700 leading-relaxed">
-                      {details.skill.description || 'No description provided.'}
-                    </p>
-                    
-                    {/* Admin Comment */}
-                    {details.skill.adminNotes && (
-                      <div className="mt-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200 shadow-sm">
-                        <p className="text-xs font-semibold text-blue-900 mb-2 uppercase tracking-wide">Admin Comment</p>
-                        <p className="text-sm text-gray-800 italic leading-relaxed">{details.skill.adminNotes}</p>
-                      </div>
-                    )}
-                  </section>
+                  {/* Subtopics Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Description */}
+                    <section className="rounded-2xl border border-slate-200 bg-white p-4 md:p-5 shadow-sm transition-all hover:shadow-md">
+                      <h3 className="text-sm font-bold text-indigo-600 mb-3 flex items-center gap-2 uppercase tracking-wider">
+                        <InformationCircleIcon className="w-5 h-5" />
+                        Description
+                      </h3>
+                      <p className="text-sm text-slate-700 leading-relaxed">
+                        {details.skill.description || 'No description provided.'}
+                      </p>
+                    </section>
+
+                    {/* What it develops */}
+                    <section className="rounded-2xl border border-slate-200 bg-white p-4 md:p-5 shadow-sm transition-all hover:shadow-md">
+                      <h3 className="text-sm font-bold text-emerald-600 mb-3 flex items-center gap-2 uppercase tracking-wider">
+                        <SparklesIcon className="w-5 h-5" />
+                        What it develops
+                      </h3>
+                      <p className="text-sm text-slate-700 leading-relaxed">
+                        {details.skill.what_it_develops || 'Information not provided.'}
+                      </p>
+                    </section>
+
+                    {/* Why it matters */}
+                    <section className="rounded-2xl border border-slate-200 bg-white p-4 md:p-5 shadow-sm transition-all hover:shadow-md">
+                      <h3 className="text-sm font-bold text-amber-600 mb-3 flex items-center gap-2 uppercase tracking-wider">
+                        <QuestionMarkCircleIcon className="w-5 h-5" />
+                        Why it matters
+                      </h3>
+                      <p className="text-sm text-slate-700 leading-relaxed">
+                        {details.skill.why_it_matters || 'Information not provided.'}
+                      </p>
+                    </section>
+
+                    {/* How it works */}
+                    <section className="rounded-2xl border border-slate-200 bg-white p-4 md:p-5 shadow-sm transition-all hover:shadow-md">
+                      <h3 className="text-sm font-bold text-blue-600 mb-3 flex items-center gap-2 uppercase tracking-wider">
+                        <LightBulbIcon className="w-5 h-5" />
+                        How it works
+                      </h3>
+                      <p className="text-sm text-slate-700 leading-relaxed">
+                        {details.skill.how_it_works || 'Information not provided.'}
+                      </p>
+                    </section>
+                  </div>
+                  
+                  {/* Admin Comment */}
+                  {details.skill.adminNotes && (
+                    <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl border border-blue-200 shadow-sm">
+                      <p className="text-xs font-semibold text-blue-900 mb-2 uppercase tracking-wide">Admin Comment</p>
+                      <p className="text-sm text-gray-800 italic leading-relaxed">{details.skill.adminNotes}</p>
+                    </div>
+                  )}
 
                   {/* Learning Content Section */}
                   <section className="rounded-2xl border border-slate-200 bg-white p-4 md:p-5">

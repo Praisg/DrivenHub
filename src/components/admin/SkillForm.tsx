@@ -13,6 +13,9 @@ interface SkillFormProps {
 export default function SkillForm({ skill, onSave, onCancel }: SkillFormProps) {
   const [name, setName] = useState(skill?.name || '');
   const [description, setDescription] = useState(skill?.description || '');
+  const [whatItDevelops, setWhatItDevelops] = useState(skill?.what_it_develops || '');
+  const [whyItMatters, setWhyItMatters] = useState(skill?.why_it_matters || '');
+  const [howItWorks, setHowItWorks] = useState(skill?.how_it_works || '');
   const [level, setLevel] = useState<'Awareness' | 'Practice' | 'Embodiment' | 'Mastery' | 'Mentorship'>(skill?.level || 'Awareness');
   const [contentItems, setContentItems] = useState<SkillContentItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -26,6 +29,9 @@ export default function SkillForm({ skill, onSave, onCancel }: SkillFormProps) {
       // Reset form for new skill
       setName('');
       setDescription('');
+      setWhatItDevelops('');
+      setWhyItMatters('');
+      setHowItWorks('');
       setLevel('Awareness');
       setContentItems([]);
     }
@@ -47,6 +53,9 @@ export default function SkillForm({ skill, onSave, onCancel }: SkillFormProps) {
         // Also update form fields from skill data
         setName(skill.name || '');
         setDescription(skill.description || '');
+        setWhatItDevelops(skill.what_it_develops || '');
+        setWhyItMatters(skill.why_it_matters || '');
+        setHowItWorks(skill.how_it_works || '');
         setLevel(skill.level || 'Awareness');
       }
     } catch (error) {
@@ -184,7 +193,14 @@ export default function SkillForm({ skill, onSave, onCancel }: SkillFormProps) {
       }
 
       await onSave(
-        { name, description, level },
+        { 
+          name, 
+          description, 
+          what_it_develops: whatItDevelops, 
+          why_it_matters: whyItMatters, 
+          how_it_works: howItWorks, 
+          level 
+        },
         processedContentItems
       );
     } catch (err: any) {
@@ -226,8 +242,48 @@ export default function SkillForm({ skill, onSave, onCancel }: SkillFormProps) {
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              rows={4}
+              rows={3}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="A general overview of the skill..."
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              What it develops
+            </label>
+            <textarea
+              value={whatItDevelops}
+              onChange={(e) => setWhatItDevelops(e.target.value)}
+              rows={3}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Specific abilities or outcomes this skill helps achieve..."
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Why it matters
+            </label>
+            <textarea
+              value={whyItMatters}
+              onChange={(e) => setWhyItMatters(e.target.value)}
+              rows={3}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="The importance and impact of this skill..."
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              How it works
+            </label>
+            <textarea
+              value={howItWorks}
+              onChange={(e) => setHowItWorks(e.target.value)}
+              rows={3}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="The mechanics or methodology behind the skill..."
             />
           </div>
 

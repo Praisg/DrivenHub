@@ -28,6 +28,9 @@ export default function SkillCreation({ onSkillCreated }: SkillCreationProps) {
       body: JSON.stringify({
         name: skillData.name,
         description: skillData.description,
+        what_it_develops: skillData.what_it_develops,
+        why_it_matters: skillData.why_it_matters,
+        how_it_works: skillData.how_it_works,
         level: skillData.level,
         contentItems: itemsWithoutFiles, // Save items without files first
       }),

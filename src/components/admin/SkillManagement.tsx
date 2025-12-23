@@ -70,6 +70,9 @@ export default function SkillManagement({ onUpdate }: SkillManagementProps) {
       body: JSON.stringify({
         name: skillData.name,
         description: skillData.description,
+        what_it_develops: skillData.what_it_develops,
+        why_it_matters: skillData.why_it_matters,
+        how_it_works: skillData.how_it_works,
         level: skillData.level,
         contentItems: validContentItems,
       }),

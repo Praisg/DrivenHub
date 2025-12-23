@@ -81,6 +81,9 @@ export interface Skill {
   id: string;
   name: string;
   description: string;
+  what_it_develops?: string;
+  why_it_matters?: string;
+  how_it_works?: string;
   category: string;
   icon: string;
   color: string;

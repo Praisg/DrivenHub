@@ -25,6 +25,9 @@ ALTER TABLE skills ADD CONSTRAINT skills_level_check CHECK (level IN ('Awareness
 
 -- Add new fields if they don't exist
 ALTER TABLE skills ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;
+ALTER TABLE skills ADD COLUMN IF NOT EXISTS what_it_develops TEXT;
+ALTER TABLE skills ADD COLUMN IF NOT EXISTS why_it_matters TEXT;
+ALTER TABLE skills ADD COLUMN IF NOT EXISTS how_it_works TEXT;
 ALTER TABLE skills ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
 
 -- Create skill_content table for content items (books, videos, articles, etc.)

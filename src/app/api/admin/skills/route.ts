@@ -51,7 +51,15 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { name, description, level, contentItems } = body;
+    const { 
+      name, 
+      description, 
+      what_it_develops, 
+      why_it_matters, 
+      how_it_works, 
+      level, 
+      contentItems 
+    } = body;
 
     if (!name || !level) {
       return NextResponse.json(
@@ -79,6 +87,9 @@ export async function POST(req: NextRequest) {
         id: skillId,
         name,
         description: description || null,
+        what_it_develops: what_it_develops || null,
+        why_it_matters: why_it_matters || null,
+        how_it_works: how_it_works || null,
         level,
         category: level, // Use level as category for now
         icon: '📚',
