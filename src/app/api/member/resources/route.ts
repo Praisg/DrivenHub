@@ -3,7 +3,8 @@ import { getSupabaseAdmin } from '@/lib/supabase';
 
 /**
  * GET /api/member/resources
- * Get resources accessible to the current member based on role and cohort
+ * Returns ONLY resources that have been explicitly assigned to the member.
+ * Roles and cohorts are NOT used for access – only for filtering in the admin UI.
  */
 export async function GET(req: NextRequest) {
   try {
@@ -19,53 +20,28 @@ export async function GET(req: NextRequest) {
 
     const supabase = getSupabaseAdmin();
 
-    // 1. Get user's role and cohort information
-    const { data: member, error: memberError } = await supabase
-      .from('members')
-      .select('id, cohort, is_lab_member, is_alumni')
-      .eq('id', userId)
-      .single();
+    // 1. Look up assignments for this member
+    const { data: assignments, error: assignmentError } = await supabase
+      .from('resource_assignments')
+      .select('resource_id')
+      .eq('member_id', userId);
 
-    if (memberError || !member) {
-      console.error('Member lookup error:', memberError);
-      return NextResponse.json(
-        { error: 'Member not found' },
-        { status: 404 }
-      );
+    if (assignmentError) {
+      console.error('Assignment lookup error:', assignmentError);
+      throw new Error(`Failed to fetch assignments: ${assignmentError.message}`);
     }
 
-    // 2. Build the query based on the specified access rules
-    // Lab Members see: Lab-wide (all) OR Cohort-specific (assigned to their cohort)
-    // Alumni see: Cohort-specific (assigned to their cohort) only
-    
-    let filterParts = [];
+    const resourceIds = (assignments || []).map((a) => a.resource_id);
 
-    // Lab Member Rules
-    if (member.is_lab_member) {
-      // Lab-wide resources for lab members
-      filterParts.push('and(visibility_lab.eq.true,is_cohort_specific.eq.false)');
-      
-      // Cohort-specific resources for lab members
-      if (member.cohort) {
-        filterParts.push(`and(visibility_lab.eq.true,is_cohort_specific.eq.true,cohorts.cs.{${member.cohort}})`);
-      }
-    }
-
-    // Alumni Rules
-    if (member.is_alumni && member.cohort) {
-      // Alumni only see cohort-specific resources assigned to their cohort
-      filterParts.push(`and(visibility_alumni.eq.true,is_cohort_specific.eq.true,cohorts.cs.{${member.cohort}})`);
-    }
-
-    if (filterParts.length === 0) {
+    if (resourceIds.length === 0) {
       return NextResponse.json({ resources: [] });
     }
 
-    // Combine filters with OR
+    // 2. Fetch the actual resource rows
     const { data: resources, error: resourceError } = await supabase
       .from('resources')
       .select('*')
-      .or(filterParts.join(','))
+      .in('id', resourceIds)
       .order('created_at', { ascending: false });
 
     if (resourceError) {

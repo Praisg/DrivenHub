@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import AdminLayout from '@/components/layouts/AdminLayout';
 import ConfirmDialog from '@/components/admin/ConfirmDialog';
 import { Button } from '@/components';
@@ -17,10 +17,11 @@ import {
   UsersIcon,
   CheckCircleIcon
 } from '@heroicons/react/24/outline';
-import { Resource } from '@/types';
+import { Resource, Member } from '@/types';
 
 export default function AdminResourcesPage() {
   const [resources, setResources] = useState<Resource[]>([]);
+  const [members, setMembers] = useState<Member[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
@@ -28,6 +29,13 @@ export default function AdminResourcesPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Filters & assignment
+  const [memberSearchQuery, setMemberSearchQuery] = useState('');
+  const [filterLabOnly, setFilterLabOnly] = useState(false);
+  const [filterAlumniOnly, setFilterAlumniOnly] = useState(false);
+  const [filterCohorts, setFilterCohorts] = useState<number[]>([]);
+  const [formAssignedMemberIds, setFormAssignedMemberIds] = useState<string[]>([]);
 
   const user = getCurrentUser();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -38,10 +46,6 @@ export default function AdminResourcesPage() {
   const [formDescription, setFormDescription] = useState('');
   const [formUrl, setFormUrl] = useState('');
   const [formThumbnailUrl, setFormThumbnailUrl] = useState('');
-  const [formVisibilityLab, setFormVisibilityLab] = useState(true);
-  const [formVisibilityAlumni, setFormVisibilityAlumni] = useState(false);
-  const [formIsCohortSpecific, setFormIsCohortSpecific] = useState(false);
-  const [formCohorts, setFormCohorts] = useState<number[]>([]);
   
   // File upload state
   const [resourceFile, setResourceFile] = useState<File | null>(null);
@@ -63,6 +67,12 @@ export default function AdminResourcesPage() {
       if (!resourcesRes.ok) throw new Error('Failed to fetch resources');
       const data = await resourcesRes.json();
       setResources(data.resources || []);
+
+      const membersRes = await fetch('/api/admin/members');
+      if (membersRes.ok) {
+        const membersData = await membersRes.json();
+        setMembers(membersData.members || []);
+      }
     } catch (err: any) {
       console.error('Error fetching data:', err);
       setError(err.message || 'Failed to load resources.');
@@ -77,10 +87,11 @@ export default function AdminResourcesPage() {
     setFormDescription('');
     setFormUrl('');
     setFormThumbnailUrl('');
-    setFormVisibilityLab(true);
-    setFormVisibilityAlumni(false);
-    setFormIsCohortSpecific(false);
-    setFormCohorts([]);
+    setFormAssignedMemberIds([]);
+    setFilterLabOnly(false);
+    setFilterAlumniOnly(false);
+    setFilterCohorts([]);
+    setMemberSearchQuery('');
     setResourceFile(null);
     setThumbnailFile(null);
     setFormErrors({});
@@ -88,26 +99,34 @@ export default function AdminResourcesPage() {
     setShowModal(true);
   };
 
-  const handleEdit = (resource: Resource) => {
-    setEditingResource(resource);
-    setFormTitle(resource.title);
-    setFormDescription(resource.description || '');
-    setFormUrl(resource.url);
-    setFormThumbnailUrl(resource.thumbnail_url || '');
-    // Note: visibility_lab, visibility_alumni, is_cohort_specific, cohorts are the new fields
-    // @ts-ignore
-    setFormVisibilityLab(resource.visibility_lab ?? true);
-    // @ts-ignore
-    setFormVisibilityAlumni(resource.visibility_alumni ?? false);
-    // @ts-ignore
-    setFormIsCohortSpecific(resource.is_cohort_specific ?? false);
-    setFormCohorts(resource.cohorts || []);
-    
-    setResourceFile(null);
-    setThumbnailFile(null);
-    setFormErrors({});
-    setError(null);
-    setShowModal(true);
+  const handleEdit = async (resource: Resource) => {
+    try {
+      setIsLoading(true);
+      const res = await fetch(`/api/admin/resources/${resource.id}`);
+      if (!res.ok) throw new Error('Failed to fetch resource details');
+      const { resource: full } = await res.json();
+
+      setEditingResource(full);
+      setFormTitle(full.title);
+      setFormDescription(full.description || '');
+      setFormUrl(full.url);
+      setFormThumbnailUrl(full.thumbnail_url || '');
+      setFormAssignedMemberIds(full.assigned_member_ids || []);
+      setFilterLabOnly(false);
+      setFilterAlumniOnly(false);
+      setFilterCohorts([]);
+      setMemberSearchQuery('');
+
+      setResourceFile(null);
+      setThumbnailFile(null);
+      setFormErrors({});
+      setError(null);
+      setShowModal(true);
+    } catch (err: any) {
+      setError(err.message || 'Failed to open resource');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleDelete = (id: string, title: string) => {
@@ -202,10 +221,7 @@ export default function AdminResourcesPage() {
           description: formDescription.trim() || null,
           url: finalUrl,
           thumbnailUrl: finalThumbnailUrl || null,
-          visibility_lab: formVisibilityLab,
-          visibility_alumni: formVisibilityAlumni,
-          is_cohort_specific: formIsCohortSpecific,
-          cohorts: formCohorts,
+          assigned_member_ids: formAssignedMemberIds,
           userId: user.id,
         }),
       });
@@ -225,12 +241,48 @@ export default function AdminResourcesPage() {
     }
   };
 
-  const toggleCohort = (cohort: number) => {
-    if (formCohorts.includes(cohort)) {
-      setFormCohorts(formCohorts.filter(c => c !== cohort));
+  // Filtering helpers for member assignment
+  const toggleFilterCohort = (cohort: number) => {
+    if (filterCohorts.includes(cohort)) {
+      setFilterCohorts(filterCohorts.filter((c) => c !== cohort));
     } else {
-      setFormCohorts([...formCohorts, cohort].sort((a, b) => a - b));
+      setFilterCohorts([...filterCohorts, cohort].sort((a, b) => a - b));
     }
+  };
+
+  const filteredMembers = useMemo(() => {
+    return members.filter((m) => {
+      const matchesSearch =
+        m.name.toLowerCase().includes(memberSearchQuery.toLowerCase()) ||
+        m.email.toLowerCase().includes(memberSearchQuery.toLowerCase());
+
+      let matchesRole = true;
+      if (filterLabOnly && !m.is_lab_member) matchesRole = false;
+      if (filterAlumniOnly && !m.is_alumni) matchesRole = false;
+
+      let matchesCohort = true;
+      if (filterCohorts.length > 0) {
+        matchesCohort = m.cohort ? filterCohorts.includes(m.cohort) : false;
+      }
+
+      return matchesSearch && matchesRole && matchesCohort;
+    });
+  }, [members, memberSearchQuery, filterLabOnly, filterAlumniOnly, filterCohorts]);
+
+  const toggleMemberSelection = (memberId: string) => {
+    if (formAssignedMemberIds.includes(memberId)) {
+      setFormAssignedMemberIds(
+        formAssignedMemberIds.filter((id) => id !== memberId)
+      );
+    } else {
+      setFormAssignedMemberIds([...formAssignedMemberIds, memberId]);
+    }
+  };
+
+  const selectAllFiltered = () => {
+    const filteredIds = filteredMembers.map((m) => m.id);
+    const merged = new Set([...formAssignedMemberIds, ...filteredIds]);
+    setFormAssignedMemberIds(Array.from(merged));
   };
 
   const filteredResources = resources.filter((resource) => {
@@ -247,7 +299,7 @@ export default function AdminResourcesPage() {
         <div className="mb-8 flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Resources</h1>
-            <p className="text-gray-600">Refactored: Manage access by Role and Cohort</p>
+            <p className="text-gray-600">Assign resources directly to individual members</p>
           </div>
           <Button onClick={handleCreate}>
             <PlusIcon className="w-5 h-5 mr-2" />
@@ -304,25 +356,13 @@ export default function AdminResourcesPage() {
                     <TrashIcon className="w-4 h-4 text-red-600" />
                   </button>
                 </div>
-                {/* Visibility Badges */}
-                <div className="mt-2 flex flex-wrap gap-2 px-1">
-                  {/* @ts-ignore */}
-                  {resource.visibility_lab && (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800">LAB</span>
-                  )}
-                  {/* @ts-ignore */}
-                  {resource.visibility_alumni && (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-800">ALUMNI</span>
-                  )}
-                  {/* @ts-ignore */}
-                  {resource.is_cohort_specific ? (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-800">
-                      COHORTS: {resource.cohorts?.join(', ')}
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-gray-100 text-gray-800">WIDE</span>
-                  )}
-                </div>
+                {/* Simple badge showing how many members are assigned if provided */}
+                {resource.assigned_member_ids && (
+                  <div className="mt-2 px-1 flex items-center gap-1 text-[11px] text-gray-500">
+                    <CheckCircleIcon className="w-3 h-3 text-green-500" />
+                    <span>{resource.assigned_member_ids.length} member(s) assigned</span>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -431,72 +471,132 @@ export default function AdminResourcesPage() {
                     </div>
                   </div>
 
-                  {/* Access Rules */}
+                  {/* Filters (Roles & Cohorts) and Assignment */}
                   <div className="pt-4 border-t border-gray-100">
                     <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
                       <UsersIcon className="w-5 h-5 mr-2 text-blue-600" />
-                      Visibility & Access Rules
+                      Filters & Member Assignment
                     </h3>
                     
                     <div className="space-y-6">
-                      {/* Role Checkboxes */}
+                      {/* Role Filters (do NOT grant access) */}
                       <div>
                         <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Target Roles</label>
                         <div className="flex gap-4">
-                          <label className={`flex-1 flex items-center p-3 border rounded-lg cursor-pointer transition-all ${formVisibilityLab ? 'bg-blue-50 border-blue-200' : 'bg-white border-gray-200'}`}>
-                            <input type="checkbox" checked={formVisibilityLab} onChange={(e) => setFormVisibilityLab(e.target.checked)} className="h-5 w-5 text-blue-600 rounded" />
+                          <label className={`flex-1 flex items-center p-3 border rounded-lg cursor-pointer transition-all ${filterLabOnly ? 'bg-blue-50 border-blue-200' : 'bg-white border-gray-200'}`}>
+                            <input type="checkbox" checked={filterLabOnly} onChange={(e) => setFilterLabOnly(e.target.checked)} className="h-5 w-5 text-blue-600 rounded" />
                             <span className="ml-3 text-sm font-bold text-gray-900">Lab Members</span>
                           </label>
-                          <label className={`flex-1 flex items-center p-3 border rounded-lg cursor-pointer transition-all ${formVisibilityAlumni ? 'bg-purple-50 border-purple-200' : 'bg-white border-gray-200'}`}>
-                            <input type="checkbox" checked={formVisibilityAlumni} onChange={(e) => setFormVisibilityAlumni(e.target.checked)} className="h-5 w-5 text-purple-600 rounded" />
+                          <label className={`flex-1 flex items-center p-3 border rounded-lg cursor-pointer transition-all ${filterAlumniOnly ? 'bg-purple-50 border-purple-200' : 'bg-white border-gray-200'}`}>
+                            <input type="checkbox" checked={filterAlumniOnly} onChange={(e) => setFilterAlumniOnly(e.target.checked)} className="h-5 w-5 text-purple-600 rounded" />
                             <span className="ml-3 text-sm font-bold text-gray-900">Alumni</span>
                           </label>
                         </div>
                       </div>
 
-                      {/* Type Toggle */}
+                      {/* Cohort Filter */}
                       <div>
-                        <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Resource Type</label>
-                        <div className="flex bg-gray-100 p-1 rounded-lg">
-                          <button
-                            type="button"
-                            onClick={() => setFormIsCohortSpecific(false)}
-                            className={`flex-1 py-2 text-sm font-bold rounded-md transition-all ${!formIsCohortSpecific ? 'bg-white shadow text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
-                          >
-                            Lab-wide
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setFormIsCohortSpecific(true)}
-                            className={`flex-1 py-2 text-sm font-bold rounded-md transition-all ${formIsCohortSpecific ? 'bg-white shadow text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
-                          >
-                            Cohort-specific
-                          </button>
+                        <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Filter by Cohort</label>
+                        <div className="flex flex-wrap gap-2">
+                          {[1,2,3,4,5,6,7,8,9,10].map((cohort) => (
+                            <button
+                              key={cohort}
+                              type="button"
+                              onClick={() => toggleFilterCohort(cohort)}
+                              className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
+                                filterCohorts.includes(cohort)
+                                  ? 'bg-blue-600 text-white shadow-md'
+                                  : 'bg-white text-gray-600 border border-gray-200'
+                              }`}
+                            >
+                              {cohort}
+                            </button>
+                          ))}
                         </div>
                       </div>
 
-                      {/* Cohort Selector (conditional) */}
-                      {formIsCohortSpecific && (
-                        <div className="p-4 bg-gray-50 rounded-lg border border-gray-200 animate-in fade-in slide-in-from-top-2 duration-200">
-                          <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">Select One or More Cohorts</label>
-                          <div className="flex flex-wrap gap-2">
-                            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((cohort) => (
-                              <button
-                                key={cohort}
-                                type="button"
-                                onClick={() => toggleCohort(cohort)}
-                                className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-black transition-all ${
-                                  formCohorts.includes(cohort)
-                                    ? 'bg-blue-600 text-white shadow-lg ring-2 ring-offset-2 ring-blue-500'
-                                    : 'bg-white text-gray-400 border border-gray-200 hover:border-blue-400'
-                                }`}
-                              >
-                                {cohort}
-                              </button>
-                            ))}
+                      {/* Member Assignment (actual access control) */}
+                      <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+                        <div className="p-4 border-b border-gray-100 bg-gray-50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                          <div className="relative flex-1">
+                            <input
+                              type="text"
+                              placeholder="Search filtered members..."
+                              value={memberSearchQuery}
+                              onChange={(e) => setMemberSearchQuery(e.target.value)}
+                              className="w-full pl-3 pr-3 py-1.5 text-sm border border-gray-300 rounded-md outline-none focus:ring-1 focus:ring-blue-500"
+                            />
+                          </div>
+                          <div className="flex items-center gap-3 text-xs">
+                            <button
+                              type="button"
+                              onClick={selectAllFiltered}
+                              className="font-semibold text-blue-600 hover:text-blue-800"
+                            >
+                              Select All Filtered
+                            </button>
+                            <span className="text-gray-300">|</span>
+                            <button
+                              type="button"
+                              onClick={() => setFormAssignedMemberIds([])}
+                              className="font-semibold text-red-600 hover:text-red-800"
+                            >
+                              Clear All
+                            </button>
                           </div>
                         </div>
-                      )}
+
+                        <div className="max-h-72 overflow-y-auto p-2">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            {filteredMembers.map((m) => (
+                              <button
+                                key={m.id}
+                                type="button"
+                                onClick={() => toggleMemberSelection(m.id)}
+                                className={`flex items-center px-3 py-2 rounded-lg border text-left transition-all ${
+                                  formAssignedMemberIds.includes(m.id)
+                                    ? 'bg-blue-600 border-blue-600 text-white shadow'
+                                    : 'bg-white border-gray-200 text-gray-700 hover:border-blue-300 hover:bg-blue-50'
+                                }`}
+                              >
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center justify-between mb-0.5">
+                                    <span className="text-xs font-bold truncate">
+                                      {m.name}
+                                    </span>
+                                    <span className="text-[10px] text-gray-400">
+                                      C{m.cohort || '?'}
+                                    </span>
+                                  </div>
+                                  <div className="text-[10px] truncate">
+                                    {m.email}
+                                  </div>
+                                  <div className="mt-0.5 text-[10px] text-gray-300">
+                                    {m.is_lab_member && 'Lab'}{m.is_lab_member && m.is_alumni && ' · '}{m.is_alumni && 'Alumni'}
+                                  </div>
+                                </div>
+                              </button>
+                            ))}
+                            {filteredMembers.length === 0 && (
+                              <div className="col-span-full py-6 text-center text-xs text-gray-400">
+                                No members match the current filters.
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="p-3 bg-gray-50 border-t border-gray-100 flex justify-between items-center text-xs text-gray-600">
+                          <span>
+                            <strong>{formAssignedMemberIds.length}</strong> member(s) selected
+                          </span>
+                          {formAssignedMemberIds.length === 0 && (
+                            <span className="text-amber-600 flex items-center gap-1">
+                              <CheckCircleIcon className="w-3 h-3" />
+                              Will be saved but not visible to anyone
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>

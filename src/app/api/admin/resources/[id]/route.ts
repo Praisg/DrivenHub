@@ -4,7 +4,7 @@ import { parseResourceUrl } from '@/lib/resources';
 
 /**
  * GET /api/admin/resources/[id]
- * Get a single resource detail
+ * Get a single resource detail, including assigned member IDs.
  */
 export async function GET(
   req: NextRequest,
@@ -24,10 +24,27 @@ export async function GET(
     }
 
     if (!data) {
-      return NextResponse.json({ error: 'Resource not found' }, { status: 404 });
+      return NextResponse.json(
+        { error: 'Resource not found' },
+        { status: 404 }
+      );
     }
 
-    return NextResponse.json({ resource: data });
+    const { data: assignments } = await supabase
+      .from('resource_assignments')
+      .select('member_id')
+      .eq('resource_id', params.id);
+
+    const assigned_member_ids = (assignments || []).map(
+      (a: any) => a.member_id
+    );
+
+    return NextResponse.json({
+      resource: {
+        ...data,
+        assigned_member_ids,
+      },
+    });
   } catch (err: any) {
     console.error('Get resource error:', err);
     return NextResponse.json(
@@ -39,7 +56,7 @@ export async function GET(
 
 /**
  * PUT /api/admin/resources/[id]
- * Update resource configuration
+ * Update resource metadata and member assignments.
  */
 export async function PUT(
   req: NextRequest,
@@ -47,16 +64,13 @@ export async function PUT(
 ) {
   try {
     const body = await req.json();
-    const { 
-      title, 
-      description, 
-      url, 
+    const {
+      title,
+      description,
+      url,
       thumbnailUrl: customThumbnailUrl,
-      visibility_lab,
-      visibility_alumni,
-      is_cohort_specific,
-      cohorts,
-      userId 
+      assigned_member_ids,
+      userId,
     } = body;
 
     const supabase = getSupabaseAdmin();
@@ -69,7 +83,10 @@ export async function PUT(
       .single();
 
     if (memberError || !adminMember || adminMember.role !== 'admin') {
-      return NextResponse.json({ error: 'Unauthorized: Admin access required' }, { status: 403 });
+      return NextResponse.json(
+        { error: 'Unauthorized: Admin access required' },
+        { status: 403 }
+      );
     }
 
     const parsed = parseResourceUrl(url);
@@ -83,10 +100,6 @@ export async function PUT(
         url,
         thumbnail_url: thumbnailUrl,
         provider: parsed.provider,
-        visibility_lab: visibility_lab ?? true,
-        visibility_alumni: visibility_alumni ?? false,
-        is_cohort_specific: is_cohort_specific ?? false,
-        cohorts: cohorts || [],
         updated_at: new Date().toISOString(),
       })
       .eq('id', params.id)
@@ -95,6 +108,25 @@ export async function PUT(
 
     if (resourceError) {
       throw new Error(`Failed to update resource: ${resourceError.message}`);
+    }
+
+    // Replace assignments
+    await supabase
+      .from('resource_assignments')
+      .delete()
+      .eq('resource_id', params.id);
+
+    if (
+      assigned_member_ids &&
+      Array.isArray(assigned_member_ids) &&
+      assigned_member_ids.length > 0
+    ) {
+      const assignments = assigned_member_ids.map((memberId: string) => ({
+        resource_id: params.id,
+        member_id: memberId,
+      }));
+
+      await supabase.from('resource_assignments').insert(assignments);
     }
 
     return NextResponse.json({ resource });
@@ -109,7 +141,7 @@ export async function PUT(
 
 /**
  * DELETE /api/admin/resources/[id]
- * Remove a resource
+ * Remove a resource (assignments cascade via FK).
  */
 export async function DELETE(
   req: NextRequest,

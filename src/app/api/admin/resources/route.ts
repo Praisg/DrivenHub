@@ -4,7 +4,7 @@ import { parseResourceUrl } from '@/lib/resources';
 
 /**
  * GET /api/admin/resources
- * Get all resources for admin management
+ * List all resources for admin management
  */
 export async function GET(req: NextRequest) {
   try {
@@ -32,26 +32,30 @@ export async function GET(req: NextRequest) {
 
 /**
  * POST /api/admin/resources
- * Create a new resource with role and cohort based access
+ * Create a new resource and assign it to specific members.
  */
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { 
-      title, 
-      description, 
-      url, 
+    const {
+      title,
+      description,
+      url,
       thumbnailUrl: bodyThumbnailUrl,
-      visibility_lab,
-      visibility_alumni,
-      is_cohort_specific,
-      cohorts,
-      userId 
+      assigned_member_ids,
+      userId,
     } = body;
 
     if (!title || !url) {
       return NextResponse.json(
         { error: 'Title and URL are required' },
+        { status: 400 }
+      );
+    }
+
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'User ID is required' },
         { status: 400 }
       );
     }
@@ -66,12 +70,16 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (memberError || !member || member.role !== 'admin') {
-      return NextResponse.json({ error: 'Unauthorized: Admin access required' }, { status: 403 });
+      return NextResponse.json(
+        { error: 'Unauthorized: Admin access required' },
+        { status: 403 }
+      );
     }
 
     const parsed = parseResourceUrl(url);
     const thumbnailUrl = bodyThumbnailUrl || parsed.thumbnailUrl || null;
 
+    // Create the resource row
     const { data: resource, error: resourceError } = await supabase
       .from('resources')
       .insert({
@@ -80,10 +88,6 @@ export async function POST(req: NextRequest) {
         url,
         thumbnail_url: thumbnailUrl,
         provider: parsed.provider,
-        visibility_lab: visibility_lab ?? true,
-        visibility_alumni: visibility_alumni ?? false,
-        is_cohort_specific: is_cohort_specific ?? false,
-        cohorts: cohorts || [],
         created_by: userId,
       })
       .select()
@@ -92,6 +96,28 @@ export async function POST(req: NextRequest) {
     if (resourceError) {
       console.error('Create resource error details:', resourceError);
       throw new Error(`Failed to create resource: ${resourceError.message}`);
+    }
+
+    // Create assignments, if any
+    if (
+      resource &&
+      assigned_member_ids &&
+      Array.isArray(assigned_member_ids) &&
+      assigned_member_ids.length > 0
+    ) {
+      const assignments = assigned_member_ids.map((memberId: string) => ({
+        resource_id: resource.id,
+        member_id: memberId,
+      }));
+
+      const { error: assignmentError } = await supabase
+        .from('resource_assignments')
+        .insert(assignments);
+
+      if (assignmentError) {
+        console.error('Error inserting resource assignments:', assignmentError);
+        // We still return the resource; assignments can be retried.
+      }
     }
 
     return NextResponse.json({ resource }, { status: 201 });

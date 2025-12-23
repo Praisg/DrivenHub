@@ -27,11 +27,9 @@ export interface Resource {
   url: string;
   thumbnail_url?: string;
   provider: string;
-  is_lab_wide: boolean;
-  visibility_alumni: boolean;
-  cohorts: number[];
-  assigned_member_ids?: string[]; // IDs of members assigned to this resource
   created_at?: string;
+  // For admin editing convenience – not stored directly on the row
+  assigned_member_ids?: string[]; // IDs of members assigned to this resource
 }
 
 export interface EmailCapture {
