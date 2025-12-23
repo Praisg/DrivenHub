@@ -6,42 +6,25 @@ import ConfirmDialog from '@/components/admin/ConfirmDialog';
 import { Button } from '@/components';
 import { getCurrentUser } from '@/lib/auth';
 import ResourceCard from '@/components/ResourceCard';
-import { PlusIcon, PencilIcon, TrashIcon, XMarkIcon, ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/outline';
-
-interface Resource {
-  id: string;
-  title: string;
-  description?: string;
-  url: string;
-  provider?: string;
-  cover_image_url?: string;
-  thumbnail_url?: string;
-  visibility: 'all' | 'selected';
-  category?: {
-    id: string;
-    name: string;
-  };
-  category_id?: string;
-  assignedMembers?: Array<{ id: string; name: string; email: string }>;
-}
-
-interface Category {
-  id: string;
-  name: string;
-  sort_order: number;
-}
-
+import { 
+  PlusIcon, 
+  PencilIcon, 
+  TrashIcon, 
+  XMarkIcon,
+  GlobeAltIcon,
+  UserGroupIcon,
+  AcademicCapIcon
+} from '@heroicons/react/24/outline';
+import { Resource } from '@/types';
 
 export default function AdminResourcesPage() {
   const [resources, setResources] = useState<Resource[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [editingResource, setEditingResource] = useState<Resource | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
   const user = getCurrentUser();
@@ -50,11 +33,12 @@ export default function AdminResourcesPage() {
   const [formTitle, setFormTitle] = useState('');
   const [formDescription, setFormDescription] = useState('');
   const [formUrl, setFormUrl] = useState('');
-  const [formCategoryId, setFormCategoryId] = useState<string>('');
-  const [formCoverImageUrl, setFormCoverImageUrl] = useState('');
-  const [formVisibility, setFormVisibility] = useState<'all' | 'selected'>('all');
+  const [formThumbnailUrl, setFormThumbnailUrl] = useState('');
+  const [formVisibilityLab, setFormVisibilityLab] = useState(true);
+  const [formVisibilityAlumni, setFormVisibilityAlumni] = useState(false);
+  const [formIsCohortSpecific, setFormIsCohortSpecific] = useState(false);
+  const [formCohorts, setFormCohorts] = useState<number[]>([]);
   const [isSaving, setIsSaving] = useState(false);
-  const [showAdvanced, setShowAdvanced] = useState(false);
   const [formErrors, setFormErrors] = useState<{ title?: string; url?: string }>({});
 
   useEffect(() => {
@@ -66,7 +50,6 @@ export default function AdminResourcesPage() {
       setIsLoading(true);
       setError(null);
 
-      // Fetch resources first (required)
       const resourcesRes = await fetch('/api/admin/resources');
       if (!resourcesRes.ok) {
         const errorData = await resourcesRes.json().catch(() => ({}));
@@ -74,24 +57,9 @@ export default function AdminResourcesPage() {
       }
       const resourcesData = await resourcesRes.json();
       setResources(resourcesData.resources || []);
-
-      // Fetch categories (optional - don't fail if this fails)
-      try {
-        const categoriesRes = await fetch('/api/admin/resource-categories');
-        if (categoriesRes.ok) {
-          const categoriesData = await categoriesRes.json();
-          setCategories(categoriesData.categories || []);
-        }
-      } catch (catErr) {
-        console.warn('Failed to fetch categories (optional):', catErr);
-        // Continue without categories
-      }
     } catch (err: any) {
-      console.error('Error fetching data:', {
-        message: err.message,
-        error: err,
-      });
-      setError(err.message || 'Failed to load resources. Check console for details.');
+      console.error('Error fetching data:', err);
+      setError(err.message || 'Failed to load resources.');
     } finally {
       setIsLoading(false);
     }
@@ -102,10 +70,11 @@ export default function AdminResourcesPage() {
     setFormTitle('');
     setFormDescription('');
     setFormUrl('');
-    setFormCategoryId('');
-    setFormCoverImageUrl('');
-    setFormVisibility('all');
-    setShowAdvanced(false);
+    setFormThumbnailUrl('');
+    setFormVisibilityLab(true);
+    setFormVisibilityAlumni(false);
+    setFormIsCohortSpecific(false);
+    setFormCohorts([]);
     setFormErrors({});
     setError(null);
     setShowModal(true);
@@ -116,10 +85,11 @@ export default function AdminResourcesPage() {
     setFormTitle(resource.title);
     setFormDescription(resource.description || '');
     setFormUrl(resource.url);
-    setFormCategoryId(resource.category_id || '');
-    setFormCoverImageUrl(resource.cover_image_url || '');
-    setFormVisibility(resource.visibility);
-    setShowAdvanced(false);
+    setFormThumbnailUrl(resource.thumbnail_url || '');
+    setFormVisibilityLab(resource.visibility_lab);
+    setFormVisibilityAlumni(resource.visibility_alumni);
+    setFormIsCohortSpecific(resource.is_cohort_specific);
+    setFormCohorts(resource.cohorts || []);
     setFormErrors({});
     setError(null);
     setShowModal(true);
@@ -148,36 +118,27 @@ export default function AdminResourcesPage() {
     } catch (err: any) {
       setError(`Failed to delete resource: ${err.message}`);
       setShowDeleteConfirm(false);
-      setDeleteTarget(null);
     }
   };
 
   const validateForm = (): boolean => {
     const errors: { title?: string; url?: string } = {};
-    
-    if (!formTitle.trim()) {
-      errors.title = 'Title is required';
-    }
-    
+    if (!formTitle.trim()) errors.title = 'Title is required';
     if (!formUrl.trim()) {
       errors.url = 'URL is required';
-    } else if (!formUrl.startsWith('http://') && !formUrl.startsWith('https://')) {
+    } else if (!formUrl.startsWith('http')) {
       errors.url = 'URL must start with http:// or https://';
     }
-    
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
   const handleSave = async () => {
-    if (!validateForm() || !user?.id) {
-      return;
-    }
+    if (!validateForm() || !user?.id) return;
 
     try {
       setIsSaving(true);
       setError(null);
-      setFormErrors({});
 
       const url = editingResource
         ? `/api/admin/resources/${editingResource.id}`
@@ -192,49 +153,52 @@ export default function AdminResourcesPage() {
           title: formTitle.trim(),
           description: formDescription.trim() || null,
           url: formUrl.trim(),
-          categoryId: formCategoryId || null,
-          coverImageUrl: formCoverImageUrl.trim() || null,
-          visibility: formVisibility,
+          thumbnailUrl: formThumbnailUrl.trim() || null,
+          visibility_lab: formVisibilityLab,
+          visibility_alumni: formVisibilityAlumni,
+          is_cohort_specific: formIsCohortSpecific,
+          cohorts: formCohorts,
           userId: user.id,
         }),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        const errorMessage = errorData.error || 'Failed to save resource';
-        throw new Error(errorMessage);
+        throw new Error(errorData.error || 'Failed to save resource');
       }
 
       setShowModal(false);
       await fetchData();
     } catch (err: any) {
-      const errorMessage = err.message || 'Failed to save resource';
-      setError(errorMessage);
-      console.error('Save resource error:', err);
+      setError(err.message || 'Failed to save resource');
     } finally {
       setIsSaving(false);
     }
   };
 
+  const toggleCohort = (cohort: number) => {
+    if (formCohorts.includes(cohort)) {
+      setFormCohorts(formCohorts.filter(c => c !== cohort));
+    } else {
+      setFormCohorts([...formCohorts, cohort].sort((a, b) => a - b));
+    }
+  };
 
-  // Filter resources
   const filteredResources = resources.filter((resource) => {
-    const matchesCategory = selectedCategory === 'all' || resource.category_id === selectedCategory;
     const matchesSearch =
       !searchQuery ||
       resource.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       resource.description?.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCategory && matchesSearch;
+    return matchesSearch;
   });
 
   return (
     <AdminLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
         <div className="mb-8 flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Resources</h1>
-            <p className="text-gray-600">Manage resources for members</p>
+            <p className="text-gray-600">Manage resources for Lab Members and Alumni</p>
           </div>
           <Button onClick={handleCreate}>
             <PlusIcon className="w-5 h-5 mr-2" />
@@ -242,29 +206,14 @@ export default function AdminResourcesPage() {
           </Button>
         </div>
 
-        {/* Filters */}
-        <div className="mb-6 flex flex-col sm:flex-row gap-4">
-          <div className="flex-1">
-            <input
-              type="text"
-              placeholder="Search resources..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          <select
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="all">All Categories</option>
-            {categories.map((cat) => (
-              <option key={cat.id} value={cat.id}>
-                {cat.name}
-              </option>
-            ))}
-          </select>
+        <div className="mb-6">
+          <input
+            type="text"
+            placeholder="Search resources..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full max-w-md px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
         </div>
 
         {error && (
@@ -279,12 +228,8 @@ export default function AdminResourcesPage() {
             <p className="text-gray-600">Loading resources...</p>
           </div>
         ) : filteredResources.length === 0 ? (
-          <div className="text-center py-12 bg-white rounded-lg shadow-md">
-            <p className="text-gray-600 mb-4">
-              {searchQuery || selectedCategory !== 'all'
-                ? 'No resources match your filters.'
-                : 'No resources yet.'}
-            </p>
+          <div className="text-center py-12 bg-white rounded-lg shadow-md border border-gray-100">
+            <p className="text-gray-600 mb-4">No resources found.</p>
             <Button onClick={handleCreate}>Create Your First Resource</Button>
           </div>
         ) : (
@@ -295,194 +240,206 @@ export default function AdminResourcesPage() {
                 <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
                   <button
                     onClick={() => handleEdit(resource)}
-                    className="p-2 bg-white rounded-lg shadow-md hover:bg-gray-50"
+                    className="p-2 bg-white rounded-lg shadow-md hover:bg-gray-50 border border-gray-200"
                     title="Edit"
                   >
                     <PencilIcon className="w-4 h-4 text-blue-600" />
                   </button>
                   <button
                     onClick={() => handleDelete(resource.id, resource.title)}
-                    className="p-2 bg-white rounded-lg shadow-md hover:bg-gray-50"
+                    className="p-2 bg-white rounded-lg shadow-md hover:bg-gray-50 border border-gray-200"
                     title="Delete"
                   >
                     <TrashIcon className="w-4 h-4 text-red-600" />
                   </button>
+                </div>
+                {/* Status Badges */}
+                <div className="mt-2 flex flex-wrap gap-2 px-1">
+                  {resource.visibility_lab && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                      Lab
+                    </span>
+                  )}
+                  {resource.visibility_alumni && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
+                      Alumni
+                    </span>
+                  )}
+                  {resource.is_cohort_specific && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                      Cohorts: {resource.cohorts?.join(', ') || 'None'}
+                    </span>
+                  )}
+                  {!resource.is_cohort_specific && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
+                      Lab-wide
+                    </span>
+                  )}
                 </div>
               </div>
             ))}
           </div>
         )}
 
-        {/* Create/Edit Modal */}
         {showModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-              <div className="p-6 border-b border-gray-200 flex justify-between items-center">
+            <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+              <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50 rounded-t-xl">
                 <h2 className="text-2xl font-bold text-gray-900">
                   {editingResource ? 'Edit Resource' : 'New Resource'}
                 </h2>
-                <button
-                  onClick={() => setShowModal(false)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
+                <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600">
                   <XMarkIcon className="w-6 h-6" />
                 </button>
               </div>
 
-              <div className="p-6 space-y-4">
-                {/* Basic Fields - Always Visible */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Title *
-                  </label>
-                  <input
-                    type="text"
-                    value={formTitle}
-                    onChange={(e) => {
-                      setFormTitle(e.target.value);
-                      if (formErrors.title) setFormErrors({ ...formErrors, title: undefined });
-                    }}
-                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                      formErrors.title ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                    placeholder="Resource title"
-                  />
-                  {formErrors.title && (
-                    <p className="mt-1 text-xs text-red-600">{formErrors.title}</p>
-                  )}
-                </div>
+              <div className="p-6 space-y-6">
+                <div className="grid grid-cols-1 gap-6">
+                  {/* Title & URL */}
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Title *</label>
+                      <input
+                        type="text"
+                        value={formTitle}
+                        onChange={(e) => setFormTitle(e.target.value)}
+                        className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none ${
+                          formErrors.title ? 'border-red-500' : 'border-gray-300'
+                        }`}
+                        placeholder="e.g. Weekly Workshop Recording"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Resource Link *</label>
+                      <input
+                        type="url"
+                        value={formUrl}
+                        onChange={(e) => setFormUrl(e.target.value)}
+                        className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none ${
+                          formErrors.url ? 'border-red-500' : 'border-gray-300'
+                        }`}
+                        placeholder="YouTube, Dropbox, Drive, etc."
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Short Description</label>
+                      <textarea
+                        value={formDescription}
+                        onChange={(e) => setFormDescription(e.target.value)}
+                        rows={2}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                        placeholder="What is this resource about?"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Thumbnail Image URL</label>
+                      <input
+                        type="url"
+                        value={formThumbnailUrl}
+                        onChange={(e) => setFormThumbnailUrl(e.target.value)}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                        placeholder="Leave blank for automatic provider thumbnail"
+                      />
+                    </div>
+                  </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Link URL *
-                  </label>
-                  <input
-                    type="url"
-                    value={formUrl}
-                    onChange={(e) => {
-                      setFormUrl(e.target.value);
-                      if (formErrors.url) setFormErrors({ ...formErrors, url: undefined });
-                    }}
-                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                      formErrors.url ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                    placeholder="https://..."
-                  />
-                  {formErrors.url ? (
-                    <p className="mt-1 text-xs text-red-600">{formErrors.url}</p>
-                  ) : (
-                    <p className="mt-1 text-xs text-gray-500">
-                      YouTube URLs will automatically get thumbnails
-                    </p>
-                  )}
-                </div>
+                  {/* Visibility & Access */}
+                  <div className="pt-4 border-t border-gray-100">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                      <GlobeAltIcon className="w-5 h-5 mr-2 text-blue-600" />
+                      Visibility & Access
+                    </h3>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                      <label className="flex items-center p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={formVisibilityLab}
+                          onChange={(e) => setFormVisibilityLab(e.target.checked)}
+                          className="h-5 w-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                        />
+                        <div className="ml-3">
+                          <span className="block text-sm font-medium text-gray-900">Lab Members</span>
+                          <span className="block text-xs text-gray-500">Visible to active members</span>
+                        </div>
+                      </label>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Description (optional)
-                  </label>
-                  <textarea
-                    value={formDescription}
-                    onChange={(e) => setFormDescription(e.target.value)}
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Brief description..."
-                  />
-                </div>
+                      <label className="flex items-center p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={formVisibilityAlumni}
+                          onChange={(e) => setFormVisibilityAlumni(e.target.checked)}
+                          className="h-5 w-5 text-purple-600 rounded border-gray-300 focus:ring-purple-500"
+                        />
+                        <div className="ml-3">
+                          <span className="block text-sm font-medium text-gray-900">Alumni</span>
+                          <span className="block text-xs text-gray-500">Visible to former members</span>
+                        </div>
+                      </label>
+                    </div>
 
-                {/* Advanced Section - Collapsible */}
-                <div className="border-t border-gray-200 pt-4">
-                  <button
-                    type="button"
-                    onClick={() => setShowAdvanced(!showAdvanced)}
-                    className="flex items-center justify-between w-full text-sm font-medium text-gray-700 hover:text-gray-900"
-                  >
-                    <span>Advanced Options</span>
-                    {showAdvanced ? (
-                      <ChevronUpIcon className="w-5 h-5" />
-                    ) : (
-                      <ChevronDownIcon className="w-5 h-5" />
-                    )}
-                  </button>
-
-                  {showAdvanced && (
-                    <div className="mt-4 space-y-4">
-                      {/* Category */}
-                      {categories.length > 0 && (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-100">
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Category (optional)
-                          </label>
-                          <select
-                            value={formCategoryId}
-                            onChange={(e) => setFormCategoryId(e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          <h4 className="font-medium text-gray-900">Resource Type</h4>
+                          <p className="text-sm text-gray-500">Should this be restricted to specific cohorts?</p>
+                        </div>
+                        <div className="flex bg-white p-1 rounded-lg border border-gray-200">
+                          <button
+                            type="button"
+                            onClick={() => setFormIsCohortSpecific(false)}
+                            className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${
+                              !formIsCohortSpecific 
+                                ? 'bg-blue-600 text-white shadow-sm' 
+                                : 'text-gray-600 hover:bg-gray-50'
+                            }`}
                           >
-                            <option value="">None</option>
-                            {categories.map((cat) => (
-                              <option key={cat.id} value={cat.id}>
-                                {cat.name}
-                              </option>
+                            Lab-wide
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setFormIsCohortSpecific(true)}
+                            className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${
+                              formIsCohortSpecific 
+                                ? 'bg-blue-600 text-white shadow-sm' 
+                                : 'text-gray-600 hover:bg-gray-50'
+                            }`}
+                          >
+                            Cohort-specific
+                          </button>
+                        </div>
+                      </div>
+
+                      {formIsCohortSpecific && (
+                        <div className="p-4 border border-blue-100 bg-blue-50 rounded-lg">
+                          <label className="block text-sm font-medium text-blue-900 mb-3">
+                            Select Cohorts
+                          </label>
+                          <div className="flex flex-wrap gap-2">
+                            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((cohort) => (
+                              <button
+                                key={cohort}
+                                type="button"
+                                onClick={() => toggleCohort(cohort)}
+                                className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
+                                  formCohorts.includes(cohort)
+                                    ? 'bg-blue-600 text-white ring-4 ring-blue-100'
+                                    : 'bg-white text-gray-600 border border-gray-300 hover:border-blue-400'
+                                }`}
+                              >
+                                {cohort}
+                              </button>
                             ))}
-                          </select>
+                          </div>
                         </div>
                       )}
-
-                      {/* Cover Image URL */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Cover Image URL (optional)
-                        </label>
-                        <input
-                          type="url"
-                          value={formCoverImageUrl}
-                          onChange={(e) => setFormCoverImageUrl(e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          placeholder="https://..."
-                        />
-                        <p className="mt-1 text-xs text-gray-500">
-                          Override automatic thumbnail (e.g., for custom images)
-                        </p>
-                      </div>
-
-                      {/* Visibility - Simplified for now */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Visibility
-                        </label>
-                        <select
-                          value={formVisibility}
-                          onChange={(e) => setFormVisibility(e.target.value as 'all' | 'selected')}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        >
-                          <option value="all">Everyone</option>
-                          <option value="selected" disabled>
-                            Selected Members (coming soon)
-                          </option>
-                        </select>
-                        <p className="mt-1 text-xs text-gray-500">
-                          Default: Everyone can see this resource
-                        </p>
-                      </div>
                     </div>
-                  )}
+                  </div>
                 </div>
 
-                {/* Error Display */}
-                {error && (
-                  <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-                    <p className="text-sm text-red-800">{error}</p>
-                  </div>
-                )}
-
-                {/* Actions */}
-                <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+                <div className="flex justify-end gap-3 pt-6 border-t border-gray-100">
                   <Button
-                    onClick={() => {
-                      setShowModal(false);
-                      setError(null);
-                      setFormErrors({});
-                    }}
+                    onClick={() => setShowModal(false)}
                     variant="outline"
                     disabled={isSaving}
                   >
@@ -492,7 +449,7 @@ export default function AdminResourcesPage() {
                     onClick={handleSave} 
                     disabled={isSaving || !formTitle.trim() || !formUrl.trim()}
                   >
-                    {isSaving ? 'Saving...' : editingResource ? 'Update' : 'Create'}
+                    {isSaving ? 'Saving...' : editingResource ? 'Update Resource' : 'Create Resource'}
                   </Button>
                 </div>
               </div>
@@ -500,22 +457,17 @@ export default function AdminResourcesPage() {
           </div>
         )}
 
-        {/* Delete Confirmation */}
         <ConfirmDialog
           open={showDeleteConfirm}
-          title="Delete this resource?"
-          description={`This will permanently delete "${deleteTarget?.title || ''}". This action cannot be undone.`}
-          confirmLabel="Yes, delete"
+          title="Delete Resource"
+          description={`Are you sure you want to delete "${deleteTarget?.title}"? This cannot be undone.`}
+          confirmLabel="Delete"
           cancelLabel="Cancel"
           confirmVariant="danger"
           onConfirm={confirmDelete}
-          onCancel={() => {
-            setShowDeleteConfirm(false);
-            setDeleteTarget(null);
-          }}
+          onCancel={() => setShowDeleteConfirm(false)}
         />
       </div>
     </AdminLayout>
   );
 }
-

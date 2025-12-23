@@ -22,11 +22,16 @@ export interface Event {
 
 export interface Resource {
   id: string;
-  kind: 'video' | 'podcast' | 'doc';
   title: string;
-  description: string;
+  description?: string;
   url: string;
+  thumbnail_url?: string;
   provider: string;
+  visibility_lab: boolean;
+  visibility_alumni: boolean;
+  is_cohort_specific: boolean;
+  cohorts: number[];
+  created_at?: string;
 }
 
 export interface EmailCapture {
@@ -57,6 +62,9 @@ export interface Member {
   role: 'admin' | 'member';
   avatar?: string;
   status: 'online' | 'away' | 'offline';
+  cohort?: number;
+  is_lab_member: boolean;
+  is_alumni: boolean;
   assignedSkills?: MemberSkill[];
 }
 

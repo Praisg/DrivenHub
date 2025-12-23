@@ -17,11 +17,6 @@ export async function GET(
       .from('resources')
       .select(`
         *,
-        category:resource_categories (
-          id,
-          name,
-          sort_order
-        ),
         created_by:members (
           id,
           name,
@@ -42,30 +37,7 @@ export async function GET(
       );
     }
 
-    // Get assigned members if visibility is 'selected'
-    let assignedMembers: any[] = [];
-    if (data.visibility === 'selected') {
-      const { data: assignments } = await supabase
-        .from('resource_assignments')
-        .select(`
-          member_id,
-          member:members (
-            id,
-            name,
-            email
-          )
-        `)
-        .eq('resource_id', params.id);
-
-      assignedMembers = (assignments || []).map((a: any) => a.member);
-    }
-
-    return NextResponse.json({ 
-      resource: {
-        ...data,
-        assignedMembers,
-      }
-    });
+    return NextResponse.json({ resource: data });
   } catch (err: any) {
     console.error('Get resource error:', err);
     return NextResponse.json(
@@ -89,10 +61,11 @@ export async function PUT(
       title, 
       description, 
       url, 
-      categoryId, 
-      coverImageUrl,
-      visibility,
-      selectedMemberIds,
+      thumbnailUrl: customThumbnailUrl,
+      visibility_lab,
+      visibility_alumni,
+      is_cohort_specific,
+      cohorts,
       userId 
     } = body;
 
@@ -135,7 +108,7 @@ export async function PUT(
 
     // Parse URL to detect provider and generate thumbnail
     const parsed = parseResourceUrl(url);
-    const thumbnailUrl = coverImageUrl || parsed.thumbnailUrl || null;
+    const thumbnailUrl = customThumbnailUrl || parsed.thumbnailUrl || null;
 
     // Update resource
     const { data: resource, error: resourceError } = await supabase
@@ -144,11 +117,12 @@ export async function PUT(
         title,
         description: description || null,
         url,
-        category_id: categoryId || null,
-        cover_image_url: coverImageUrl || null,
         thumbnail_url: thumbnailUrl,
         provider: parsed.provider,
-        visibility: visibility || 'all',
+        visibility_lab: visibility_lab ?? true,
+        visibility_alumni: visibility_alumni ?? false,
+        is_cohort_specific: is_cohort_specific ?? false,
+        cohorts: cohorts || [],
         updated_at: new Date().toISOString(),
       })
       .eq('id', params.id)
@@ -164,29 +138,6 @@ export async function PUT(
         { error: 'Resource not found' },
         { status: 404 }
       );
-    }
-
-    // Update assignments
-    // Delete existing assignments
-    await supabase
-      .from('resource_assignments')
-      .delete()
-      .eq('resource_id', params.id);
-
-    // Insert new assignments if visibility is 'selected'
-    if (visibility === 'selected' && selectedMemberIds && selectedMemberIds.length > 0) {
-      const assignments = selectedMemberIds.map((memberId: string) => ({
-        resource_id: params.id,
-        member_id: memberId,
-      }));
-
-      const { error: assignmentError } = await supabase
-        .from('resource_assignments')
-        .insert(assignments);
-
-      if (assignmentError) {
-        console.error('Error updating assignments:', assignmentError);
-      }
     }
 
     return NextResponse.json({ resource });
@@ -241,7 +192,7 @@ export async function DELETE(
       );
     }
 
-    // Delete resource (assignments will cascade delete)
+    // Delete resource
     const { error } = await supabase
       .from('resources')
       .delete()
@@ -260,4 +211,3 @@ export async function DELETE(
     );
   }
 }
-

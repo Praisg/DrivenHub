@@ -56,10 +56,6 @@ export async function POST(req: NextRequest) {
       title, 
       description, 
       url, 
-      categoryId, 
-      coverImageUrl,
-      visibility,
-      selectedMemberIds,
       userId 
     } = body;
 
@@ -101,24 +97,21 @@ export async function POST(req: NextRequest) {
 
     // Parse URL to detect provider and generate thumbnail
     const parsed = parseResourceUrl(url);
-    const thumbnailUrl = coverImageUrl || parsed.thumbnailUrl || null;
+    const thumbnailUrl = body.thumbnailUrl || parsed.thumbnailUrl || null;
 
     // Simplified insert - basic fields only
     const insertData: any = {
       title,
       description: description || null,
       url,
-      cover_image_url: coverImageUrl || null,
       thumbnail_url: thumbnailUrl,
       provider: parsed.provider,
-      visibility: visibility || 'all',
+      visibility_lab: body.visibility_lab ?? true,
+      visibility_alumni: body.visibility_alumni ?? false,
+      is_cohort_specific: body.is_cohort_specific ?? false,
+      cohorts: body.cohorts || [],
       created_by: userId,
     };
-
-    // Only add category_id if provided and categories table exists
-    if (categoryId) {
-      insertData.category_id = categoryId;
-    }
 
     // Create resource
     const { data: resource, error: resourceError } = await supabase
