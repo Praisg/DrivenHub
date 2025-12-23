@@ -46,6 +46,8 @@ export default function AdminResourcesPage() {
   const [formDescription, setFormDescription] = useState('');
   const [formUrl, setFormUrl] = useState('');
   const [formThumbnailUrl, setFormThumbnailUrl] = useState('');
+  const [formIsLabWide, setFormIsLabWide] = useState(false);
+  const [formVisibilityAlumni, setFormVisibilityAlumni] = useState(false);
   const [formAssignedMemberIds, setFormAssignedMemberIds] = useState<string[]>([]);
   
   // File upload state
@@ -93,6 +95,8 @@ export default function AdminResourcesPage() {
     setFormDescription('');
     setFormUrl('');
     setFormThumbnailUrl('');
+    setFormIsLabWide(false);
+    setFormVisibilityAlumni(false);
     setFormAssignedMemberIds([]);
     setResourceFile(null);
     setThumbnailFile(null);
@@ -121,6 +125,8 @@ export default function AdminResourcesPage() {
       setFormDescription(fullResource.description || '');
       setFormUrl(fullResource.url);
       setFormThumbnailUrl(fullResource.thumbnail_url || '');
+      setFormIsLabWide(fullResource.is_lab_wide || false);
+      setFormVisibilityAlumni(fullResource.visibility_alumni || false);
       setFormAssignedMemberIds(fullResource.assigned_member_ids || []);
       setResourceFile(null);
       setThumbnailFile(null);
@@ -235,6 +241,8 @@ export default function AdminResourcesPage() {
           description: formDescription.trim() || null,
           url: finalUrl,
           thumbnailUrl: finalThumbnailUrl || null,
+          is_lab_wide: formIsLabWide,
+          visibility_alumni: formVisibilityAlumni,
           assigned_member_ids: formAssignedMemberIds,
           userId: user.id,
         }),
@@ -271,10 +279,7 @@ export default function AdminResourcesPage() {
         m.name.toLowerCase().includes(memberSearchQuery.toLowerCase()) ||
         m.email.toLowerCase().includes(memberSearchQuery.toLowerCase());
       
-      // Role filter
-      let matchesRole = true;
-      if (filterLabOnly && !m.is_lab_member) matchesRole = false;
-      if (filterAlumniOnly && !m.is_alumni) matchesRole = false;
+      // Role filter (Now ignored for matching, just using searchQuery and cohorts)
       
       // Cohort filter
       let matchesCohort = true;
@@ -282,9 +287,9 @@ export default function AdminResourcesPage() {
         matchesCohort = m.cohort ? filterCohorts.includes(m.cohort) : false;
       }
       
-      return matchesSearch && matchesRole && matchesCohort;
+      return matchesSearch && matchesCohort;
     });
-  }, [members, memberSearchQuery, filterLabOnly, filterAlumniOnly, filterCohorts]);
+  }, [members, memberSearchQuery, filterCohorts]);
 
   const toggleMemberSelection = (memberId: string) => {
     if (formAssignedMemberIds.includes(memberId)) {
@@ -485,35 +490,52 @@ export default function AdminResourcesPage() {
                     </div>
                   </div>
 
+                  {/* Resource Audience Labels */}
+                  <div className="pt-4 border-t border-gray-100">
+                    <h3 className="text-sm font-bold text-gray-900 mb-3 uppercase tracking-wider text-gray-500">
+                      Target Audience Labels
+                    </h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <label className={`flex items-center p-3 border rounded-lg cursor-pointer transition-all ${formIsLabWide ? 'bg-blue-50 border-blue-200' : 'bg-white border-gray-200 hover:bg-gray-50'}`}>
+                        <input 
+                          type="checkbox" 
+                          checked={formIsLabWide} 
+                          onChange={(e) => setFormIsLabWide(e.target.checked)} 
+                          className="h-5 w-5 text-blue-600 rounded border-gray-300" 
+                        />
+                        <div className="ml-3">
+                          <span className="block text-sm font-bold text-gray-900">Lab Members</span>
+                          <span className="block text-[10px] text-gray-500">Intended for active Lab</span>
+                        </div>
+                      </label>
+
+                      <label className={`flex items-center p-3 border rounded-lg cursor-pointer transition-all ${formVisibilityAlumni ? 'bg-purple-50 border-purple-200' : 'bg-white border-gray-200 hover:bg-gray-50'}`}>
+                        <input 
+                          type="checkbox" 
+                          checked={formVisibilityAlumni} 
+                          onChange={(e) => setFormVisibilityAlumni(e.target.checked)} 
+                          className="h-5 w-5 text-purple-600 rounded border-gray-300" 
+                        />
+                        <div className="ml-3">
+                          <span className="block text-sm font-bold text-gray-900">Alumni</span>
+                          <span className="block text-[10px] text-gray-500">Intended for Alumni</span>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+
                   {/* Assignment Section */}
                   <div className="pt-4 border-t border-gray-100">
                     <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
                       <FunnelIcon className="w-5 h-5 mr-2 text-blue-600" />
-                      Filter & Assign Members
+                      Assign Members
                     </h3>
                     
                     <div className="space-y-4">
-                      {/* Filter Tools */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <label className={`flex items-center p-3 border rounded-lg cursor-pointer transition-all ${filterLabOnly ? 'bg-blue-50 border-blue-200' : 'bg-white border-gray-200'}`}>
-                          <input type="checkbox" checked={filterLabOnly} onChange={(e) => setFilterLabOnly(e.target.checked)} className="h-5 w-5 text-blue-600 rounded border-gray-300" />
-                          <div className="ml-3">
-                            <span className="block text-sm font-bold text-gray-900">Lab Members</span>
-                          </div>
-                        </label>
-
-                        <label className={`flex items-center p-3 border rounded-lg cursor-pointer transition-all ${filterAlumniOnly ? 'bg-purple-50 border-purple-200' : 'bg-white border-gray-200'}`}>
-                          <input type="checkbox" checked={filterAlumniOnly} onChange={(e) => setFilterAlumniOnly(e.target.checked)} className="h-5 w-5 text-purple-600 rounded border-gray-300" />
-                          <div className="ml-3">
-                            <span className="block text-sm font-bold text-gray-900">Alumni</span>
-                          </div>
-                        </label>
-                      </div>
-
-                      {/* Filter Cohorts */}
+                      {/* Filter Tool - Cohort Only */}
                       <div className="p-4 bg-gray-50 rounded-lg border border-gray-100">
                         <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">
-                          Filter by Cohort
+                          Filter Members by Cohort
                         </label>
                         <div className="flex flex-wrap gap-2">
                           {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((cohort) => (

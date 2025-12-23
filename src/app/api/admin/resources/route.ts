@@ -42,6 +42,8 @@ export async function POST(req: NextRequest) {
       description, 
       url, 
       thumbnailUrl: bodyThumbnailUrl,
+      is_lab_wide,
+      visibility_alumni,
       assigned_member_ids,
       userId 
     } = body;
@@ -89,6 +91,8 @@ export async function POST(req: NextRequest) {
         url,
         thumbnail_url: thumbnailUrl,
         provider: parsed.provider,
+        is_lab_wide: is_lab_wide || false,
+        visibility_alumni: visibility_alumni || false,
         created_by: userId,
       })
       .select()
