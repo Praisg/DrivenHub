@@ -85,7 +85,7 @@ export interface Skill {
   category: string;
   icon: string;
   color: string;
-  level: 'Awareness' | 'Embodiment' | 'Mastery';
+  level: 'Awareness' | 'Practice' | 'Embodiment' | 'Mastery' | 'Mentorship';
   isActive?: boolean;
   createdAt: string;
   updatedAt?: string;

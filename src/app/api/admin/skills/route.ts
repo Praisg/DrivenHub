@@ -60,9 +60,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (!['Awareness', 'Embodiment', 'Mastery'].includes(level)) {
+    if (!['Awareness', 'Practice', 'Embodiment', 'Mastery', 'Mentorship'].includes(level)) {
       return NextResponse.json(
-        { error: 'Level must be Awareness, Embodiment, or Mastery' },
+        { error: 'Level must be Awareness, Practice, Embodiment, Mastery, or Mentorship' },
         { status: 400 }
       );
     }

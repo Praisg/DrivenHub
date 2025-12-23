@@ -13,7 +13,7 @@ interface SkillFormProps {
 export default function SkillForm({ skill, onSave, onCancel }: SkillFormProps) {
   const [name, setName] = useState(skill?.name || '');
   const [description, setDescription] = useState(skill?.description || '');
-  const [level, setLevel] = useState<'Awareness' | 'Embodiment' | 'Mastery'>(skill?.level || 'Awareness');
+  const [level, setLevel] = useState<'Awareness' | 'Practice' | 'Embodiment' | 'Mastery' | 'Mentorship'>(skill?.level || 'Awareness');
   const [contentItems, setContentItems] = useState<SkillContentItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -237,13 +237,15 @@ export default function SkillForm({ skill, onSave, onCancel }: SkillFormProps) {
             </label>
             <select
               value={level}
-              onChange={(e) => setLevel(e.target.value as 'Awareness' | 'Embodiment' | 'Mastery')}
+              onChange={(e) => setLevel(e.target.value as any)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
             >
               <option value="Awareness">Awareness</option>
+              <option value="Practice">Practice</option>
               <option value="Embodiment">Embodiment</option>
               <option value="Mastery">Mastery</option>
+              <option value="Mentorship">Mentorship</option>
             </select>
           </div>
         </div>

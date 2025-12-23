@@ -81,7 +81,7 @@ export default function LevelBasedSkillAssignment({ onAssignmentComplete }: Leve
     setSelectedMembers([]);
   };
 
-  const selectAllSkillsInLevel = (level: 'Awareness' | 'Embodiment' | 'Mastery') => {
+  const selectAllSkillsInLevel = (level: 'Awareness' | 'Practice' | 'Embodiment' | 'Mastery' | 'Mentorship') => {
     const skillsInLevel = getAllSkillsByLevel(level);
     const skillIds = skillsInLevel.map(skill => skill.id);
     
@@ -100,7 +100,7 @@ export default function LevelBasedSkillAssignment({ onAssignmentComplete }: Leve
     setSelectedSkills([]);
   };
 
-  const getAllSkillsByLevel = (level: 'Awareness' | 'Embodiment' | 'Mastery'): Skill[] => {
+  const getAllSkillsByLevel = (level: 'Awareness' | 'Practice' | 'Embodiment' | 'Mastery' | 'Mentorship'): Skill[] => {
     // Filter skills by level - new system uses flat structure
     return skills.filter(skill => skill.level === level);
   };
@@ -233,7 +233,7 @@ export default function LevelBasedSkillAssignment({ onAssignmentComplete }: Leve
     return memberSkill?.skills.length || 0;
   };
 
-  const renderSkillLevel = (level: 'Awareness' | 'Embodiment' | 'Mastery', title: string) => {
+  const renderSkillLevel = (level: 'Awareness' | 'Practice' | 'Embodiment' | 'Mastery' | 'Mentorship', title: string) => {
     const skillsInLevel = getAllSkillsByLevel(level);
     
     return (
@@ -396,8 +396,10 @@ export default function LevelBasedSkillAssignment({ onAssignmentComplete }: Leve
       {/* Skill Levels */}
       <div className="space-y-6">
         {renderSkillLevel('Awareness', 'Awareness Skills')}
+        {renderSkillLevel('Practice', 'Practice Skills')}
         {renderSkillLevel('Embodiment', 'Embodiment Skills')}
         {renderSkillLevel('Mastery', 'Mastery Skills')}
+        {renderSkillLevel('Mentorship', 'Mentorship Skills')}
       </div>
 
       {/* Assignment Preview */}

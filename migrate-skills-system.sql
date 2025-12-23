@@ -18,10 +18,10 @@ UPDATE skills SET level = 'Embodiment' WHERE LOWER(level) = 'secondary' OR level
 UPDATE skills SET level = 'Mastery' WHERE LOWER(level) = 'tertiary' OR level = 'tertiary';
 
 -- Set default for any remaining invalid values (safety fallback)
-UPDATE skills SET level = 'Awareness' WHERE level NOT IN ('Awareness', 'Embodiment', 'Mastery');
+UPDATE skills SET level = 'Awareness' WHERE level NOT IN ('Awareness', 'Practice', 'Embodiment', 'Mastery', 'Mentorship');
 
 -- Now add new constraint with new values
-ALTER TABLE skills ADD CONSTRAINT skills_level_check CHECK (level IN ('Awareness', 'Embodiment', 'Mastery'));
+ALTER TABLE skills ADD CONSTRAINT skills_level_check CHECK (level IN ('Awareness', 'Practice', 'Embodiment', 'Mastery', 'Mentorship'));
 
 -- Add new fields if they don't exist
 ALTER TABLE skills ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;
