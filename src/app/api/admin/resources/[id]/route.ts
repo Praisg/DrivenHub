@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabase } from '@/lib/supabase';
+import { getSupabaseAdmin } from '@/lib/supabase';
 import { parseResourceUrl } from '@/lib/resources';
 
 /**
@@ -11,7 +11,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const supabase = getSupabase();
+    const supabase = getSupabaseAdmin();
 
     const { data, error } = await supabase
       .from('resources')
@@ -92,7 +92,7 @@ export async function PUT(
       );
     }
 
-    const supabase = getSupabase();
+    const supabase = getSupabaseAdmin();
 
     // Verify user is admin
     const { data: member, error: memberError } = await supabase
@@ -186,7 +186,7 @@ export async function DELETE(
       );
     }
 
-    const supabase = getSupabase();
+    const supabase = getSupabaseAdmin();
 
     // Verify user is admin
     const { data: member, error: memberError } = await supabase

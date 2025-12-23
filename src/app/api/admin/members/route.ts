@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabase } from '@/lib/supabase';
+import { getSupabaseAdmin } from '@/lib/supabase';
 
 /**
  * GET /api/admin/members
@@ -7,12 +7,11 @@ import { getSupabase } from '@/lib/supabase';
  */
 export async function GET(req: NextRequest) {
   try {
-    const supabase = getSupabase();
+    const supabase = getSupabaseAdmin();
 
     const { data, error } = await supabase
       .from('members')
-      .select('id, name, email, role, assigned_skills, created_at')
-      .eq('role', 'member')
+      .select('id, name, email, role, cohort, is_lab_member, is_alumni, created_at')
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -25,7 +24,9 @@ export async function GET(req: NextRequest) {
       name: member.name,
       email: member.email,
       role: member.role,
-      assignedSkills: member.assigned_skills || [],
+      cohort: member.cohort,
+      is_lab_member: member.is_lab_member,
+      is_alumni: member.is_alumni,
       registrationDate: member.created_at ? new Date(member.created_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
     }));
 

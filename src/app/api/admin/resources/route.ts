@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabase } from '@/lib/supabase';
+import { getSupabaseAdmin } from '@/lib/supabase';
 import { parseResourceUrl } from '@/lib/resources';
 
 /**
@@ -8,7 +8,7 @@ import { parseResourceUrl } from '@/lib/resources';
  */
 export async function GET(req: NextRequest) {
   try {
-    const supabase = getSupabase();
+    const supabase = getSupabaseAdmin();
 
     const { data, error } = await supabase
       .from('resources')
@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Verify user is admin
-    const supabase = getSupabase();
+    const supabase = getSupabaseAdmin();
     const { data: member, error: memberError } = await supabase
       .from('members')
       .select('id, role')

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabase } from '@/lib/supabase';
+import { getSupabaseAdmin } from '@/lib/supabase';
 
 /**
  * GET /api/member/resources
@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const supabase = getSupabase();
+    const supabase = getSupabaseAdmin();
 
     // The logic is now simple: A member sees a resource ONLY if it is 
     // individually assigned to them in the resource_assignments table.
@@ -40,6 +40,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Fetch the actual resource details for these IDs
+    // We use getSupabaseAdmin() here too to bypass RLS
     const { data: resources, error: resourceError } = await supabase
       .from('resources')
       .select('*')
