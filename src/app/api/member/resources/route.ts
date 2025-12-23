@@ -49,25 +49,27 @@ export async function GET(req: NextRequest) {
     
     const individuallyAssignedIds = (individualAssignments || []).map(a => a.resource_id);
 
+    // Build the query based on access rules
     let filterParts = [];
     
-    // Add individual assignments if they exist
+    // 1. Individual assignments (High priority)
     if (individuallyAssignedIds.length > 0) {
       filterParts.push(`id.in.(${individuallyAssignedIds.join(',')})`);
     }
 
+    // 2. Lab Member rules
     if (member.is_lab_member) {
-      // Lab Members see it if it's lab-wide
+      // Lab-wide resources
       filterParts.push('is_lab_wide.eq.true');
       
-      // OR if they are in the assigned cohorts
+      // Cohort-specific lab resources
       if (member.cohort) {
-        filterParts.push(`cohorts.cs.{${member.cohort}}`);
+        filterParts.push(`and(is_lab_wide.eq.false,cohorts.cs.{${member.cohort}})`);
       }
     }
     
+    // 3. Alumni rules
     if (member.is_alumni && member.cohort) {
-      // Alumni see it ONLY if they are in the assigned cohorts AND visibility_alumni is true
       filterParts.push(`and(visibility_alumni.eq.true,cohorts.cs.{${member.cohort}})`);
     }
 
@@ -75,6 +77,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ resources: [] });
     }
 
+    // Combine filters with OR logic
     const { data: resources, error: resourceError } = await supabase
       .from('resources')
       .select('*')

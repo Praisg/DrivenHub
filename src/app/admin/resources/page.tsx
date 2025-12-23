@@ -40,7 +40,7 @@ export default function AdminResourcesPage() {
   const [formDescription, setFormDescription] = useState('');
   const [formUrl, setFormUrl] = useState('');
   const [formThumbnailUrl, setFormThumbnailUrl] = useState('');
-  const [formIsLabWide, setFormIsLabWide] = useState(true);
+  const [formIsLabWide, setFormIsLabWide] = useState(false);
   const [formVisibilityAlumni, setFormVisibilityAlumni] = useState(false);
   const [formCohorts, setFormCohorts] = useState<number[]>([]);
   const [formAssignedMemberIds, setFormAssignedMemberIds] = useState<string[]>([]);
@@ -90,7 +90,7 @@ export default function AdminResourcesPage() {
     setFormDescription('');
     setFormUrl('');
     setFormThumbnailUrl('');
-    setFormIsLabWide(true);
+    setFormIsLabWide(false);
     setFormVisibilityAlumni(false);
     setFormCohorts([]);
     setFormAssignedMemberIds([]);
@@ -509,14 +509,25 @@ export default function AdminResourcesPage() {
                         <input
                           type="checkbox"
                           checked={formIsLabWide}
-                          onChange={(e) => setFormIsLabWide(e.target.checked)}
+                          onChange={(e) => {
+                            setFormIsLabWide(e.target.checked);
+                            if (e.target.checked) {
+                              // If marking Lab-wide, maybe clear specific members or just warn
+                            }
+                          }}
                           className="h-5 w-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
                         />
                         <div className="ml-3">
-                          <span className="block text-sm font-medium text-gray-900">Lab-wide (All Members)</span>
-                          <span className="block text-xs text-gray-500">Visible to all active Lab members regardless of cohort</span>
+                          <span className="block text-sm font-medium text-gray-900">Make Global (All Lab Members)</span>
+                          <span className="block text-xs text-gray-500">Everyone in the Lab will see this automatically.</span>
                         </div>
                       </label>
+
+                      {formIsLabWide && formAssignedMemberIds.length > 0 && (
+                        <div className="p-2 bg-amber-50 border border-amber-200 rounded text-[10px] text-amber-800">
+                          <strong>Note:</strong> Since this is marked "Global", your individual member selections below are redundant. Everyone will see it.
+                        </div>
+                      )}
 
                       {/* Alumni Visibility */}
                       <label className="flex items-center p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
@@ -674,7 +685,11 @@ export default function AdminResourcesPage() {
                     onClick={handleSave} 
                     disabled={isSaving || isUploading || !formTitle.trim()}
                   >
-                    {isSaving ? 'Saving...' : editingResource ? 'Update Resource' : 'Create Resource'}
+                    {isSaving ? 'Saving...' : editingResource ? 'Update Resource' : (
+                      formAssignedMemberIds.length > 0 
+                        ? `Assign to ${formAssignedMemberIds.length} Member(s)` 
+                        : 'Create Resource'
+                    )}
                   </Button>
                 </div>
               </div>
