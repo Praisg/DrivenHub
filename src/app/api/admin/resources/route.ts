@@ -43,6 +43,10 @@ export async function POST(req: NextRequest) {
       url,
       thumbnailUrl: bodyThumbnailUrl,
       assigned_member_ids,
+      // labels/metadata only (no access control)
+      visibility_lab,
+      visibility_alumni,
+      cohorts,
       userId,
     } = body;
 
@@ -88,6 +92,10 @@ export async function POST(req: NextRequest) {
         url,
         thumbnail_url: thumbnailUrl,
         provider: parsed.provider,
+        // labels only
+        visibility_lab: visibility_lab ?? false,
+        visibility_alumni: visibility_alumni ?? false,
+        cohorts: cohorts || [],
         created_by: userId,
       })
       .select()

@@ -42,6 +42,9 @@ export async function GET(
     return NextResponse.json({
       resource: {
         ...data,
+        visibility_lab: data.visibility_lab ?? false,
+        visibility_alumni: data.visibility_alumni ?? false,
+        cohorts: data.cohorts || [],
         assigned_member_ids,
       },
     });
@@ -70,6 +73,10 @@ export async function PUT(
       url,
       thumbnailUrl: customThumbnailUrl,
       assigned_member_ids,
+      // labels/metadata only
+      visibility_lab,
+      visibility_alumni,
+      cohorts,
       userId,
     } = body;
 
@@ -100,6 +107,10 @@ export async function PUT(
         url,
         thumbnail_url: thumbnailUrl,
         provider: parsed.provider,
+        // labels only
+        visibility_lab: visibility_lab ?? false,
+        visibility_alumni: visibility_alumni ?? false,
+        cohorts: cohorts || [],
         updated_at: new Date().toISOString(),
       })
       .eq('id', params.id)

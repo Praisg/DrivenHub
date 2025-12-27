@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
 
     const supabase = getSupabaseAdmin();
 
-    // 1. Look up assignments for this member
+    // 1. Look up assignments for this member (the only source of truth)
     const { data: assignments, error: assignmentError } = await supabase
       .from('resource_assignments')
       .select('resource_id')

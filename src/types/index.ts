@@ -28,6 +28,10 @@ export interface Resource {
   thumbnail_url?: string;
   provider: string;
   created_at?: string;
+  // Metadata / labels (do NOT control access)
+  visibility_lab?: boolean;
+  visibility_alumni?: boolean;
+  cohorts?: number[];
   // For admin editing convenience – not stored directly on the row
   assigned_member_ids?: string[]; // IDs of members assigned to this resource
 }
